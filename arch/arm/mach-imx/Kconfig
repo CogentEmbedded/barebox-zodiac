@@ -39,6 +39,7 @@ config ARCH_TEXT_BASE
 	default 0x4fc00000 if MACH_UDOO
 	default 0x4fc00000 if MACH_VARISCITE_MX6
 	default 0x4fc00000 if MACH_PCAAXL3
+	default 0x97f00000 if MACH_ZODIAC_NIU
 
 config ARCH_IMX_INTERNAL_BOOT
 	bool "support internal boot mode"
@@ -353,6 +354,13 @@ config MACH_GW_VENTANA
 config MACH_CM_FX6
 	bool "CM FX6"
 	select ARCH_IMX6
+
+config MACH_ZODIAC_NIU
+	bool "Zodiac i.MX51 Network Interface Unit"
+	select ARCH_IMX51
+	select SPI
+	select DRIVER_SPI_IMX
+	select MFD_MC13XXX
 
 endif
 
