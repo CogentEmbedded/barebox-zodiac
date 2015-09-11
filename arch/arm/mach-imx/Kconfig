@@ -40,6 +40,7 @@ config ARCH_TEXT_BASE
 	default 0x4fc00000 if MACH_VARISCITE_MX6
 	default 0x4fc00000 if MACH_PHYTEC_SOM_IMX6
 	default 0x9fc00000 if MACH_WARP7
+	default 0x97f00000 if MACH_ZODIAC_NIU
 
 config ARCH_IMX_IMXIMAGE
 	bool
@@ -245,6 +246,13 @@ config MACH_EMBEDSKY_E9
 
 config MACH_FREESCALE_MX51_PDK
 	bool "Freescale i.MX51 PDK"
+	select ARCH_IMX51
+	select SPI
+	select DRIVER_SPI_IMX
+	select MFD_MC13XXX
+
+config MACH_ZODIAC_NIU
+	bool "Zodiac i.MX51 Network Interface Unit"
 	select ARCH_IMX51
 	select SPI
 	select DRIVER_SPI_IMX
