@@ -46,6 +46,7 @@ config BUILTIN_DTB_NAME
 	default "versatile-pb" if ARCH_VERSATILE_PB
 	default "virt2real" if MACH_VIRT2REAL
 	default "module-mb7707" if MACH_MB7707
+	default "imx6q-zii-sram" if MACH_ZII_IMX6_SRAM
 
 choice
 	prompt "ARM system type"

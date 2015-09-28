@@ -135,3 +135,4 @@ obj-$(CONFIG_MACH_VIRT2REAL)			+= virt2real/
 obj-$(CONFIG_MACH_ZEDBOARD)			+= avnet-zedboard/
 obj-$(CONFIG_MACH_ZYLONITE)			+= zylonite/
 obj-$(CONFIG_MACH_VARISCITE_MX6)		+= variscite-mx6/
+obj-$(CONFIG_MACH_ZII_IMX6_SRAM)		+= zii-imx6q-sram/

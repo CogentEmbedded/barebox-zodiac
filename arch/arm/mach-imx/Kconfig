@@ -38,6 +38,7 @@ config ARCH_TEXT_BASE
 	default 0x4fc00000 if MACH_UDOO
 	default 0x4fc00000 if MACH_VARISCITE_MX6
 	default 0x4fc00000 if MACH_PHYTEC_SOM_IMX6
+	default 0x0091e000 if MACH_ZII_IMX6_SRAM
 
 config ARCH_IMX_IMXIMAGE
 	bool
@@ -504,9 +505,19 @@ config MACH_TX53
 	help
 	  Say Y here if you are using the Ka-Ro tx53 board
 
+# ----------------------------------------------------------
+
+comment "i.MX6 Boards"
+
+config MACH_ZII_IMX6_SRAM
+	bool "Zodiac Inflight Innovation i.MX6Q SRAM"
+	select ARCH_IMX6
+	select BUILTIN_DTB
+
 endchoice
 
 # ----------------------------------------------------------
+
 
 menu "Board specific settings"
 
