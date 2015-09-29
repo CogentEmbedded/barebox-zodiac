@@ -97,27 +97,32 @@ static int spi_rw(struct spi_device *spi, void * buf, size_t len)
 	return 0;
 }
 
-#define MXC_PMIC_REG_NUM(reg)	(((reg) & 0x3f) << 25)
-#define MXC_PMIC_WRITE		(1 << 31)
+#define MXC_PMIC_REG_NUM(reg)	(((reg) & 0x3f) << 1)
+#define MXC_PMIC_WRITE		(1 << 7)
 
 static int mc13xxx_spi_reg_read(struct mc13xxx *mc13xxx, u8 reg, u32 *val)
 {
-	uint32_t buf;
+	uint8_t buf[4] = {0, 0, 0, 0};
 
-	buf = MXC_PMIC_REG_NUM(reg);
+	buf[0] = MXC_PMIC_REG_NUM(reg);
 
-	spi_rw(mc13xxx->spi, &buf, 4);
+	spi_rw(mc13xxx->spi, buf, 4);
 
-	*val = buf;
+	*val = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
 
 	return 0;
 }
 
 static int mc13xxx_spi_reg_write(struct mc13xxx *mc13xxx, u8 reg, u32 val)
 {
-	uint32_t buf = MXC_PMIC_REG_NUM(reg) | MXC_PMIC_WRITE | (val & 0xffffff);
+	uint8_t buf[4];
 
-	spi_rw(mc13xxx->spi, &buf, 4);
+	buf[0] = MXC_PMIC_REG_NUM(reg) | MXC_PMIC_WRITE;
+	buf[1] = (val >> 16) & 0xff;
+	buf[2] = (val >> 8) & 0xff;
+	buf[3] = (val >> 0) & 0xff;
+
+	spi_rw(mc13xxx->spi, buf, 4);
 
 	return 0;
 }
