@@ -38,6 +38,54 @@
 			gpios = <&gpio4 26 GPIO_ACTIVE_LOW>;
 		};
 	};
+
+	dsa@0 {
+		compatible = "marvell,dsa";
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		dsa,ethernet = <&fec>;
+		dsa,mii-bus = <&fec_mdio>;
+
+		switch@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0 0>;	/* MDIO address 0, switch 0 in tree */
+
+			port@0 {
+				reg = <0>;
+				label = "netleft";
+			};
+
+			port@1 {
+				reg = <1>;
+				label = "netright";
+			};
+
+			port@2 {
+				reg = <2>;
+				label = "port1";
+			};
+
+			port@3 {
+				reg = <3>;
+				label = "port2";
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "port3";
+			};
+			port@5 {
+				reg = <5>;
+				label = "port4";
+			};
+			port@6 {
+				reg = <6>;
+				label = "cpu";
+			};
+		};
+       };
 };
 
 &ecspi1 {
@@ -211,10 +259,16 @@
 &fec {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec>;
-	phy-mode = "mii";
-	/*phy-reset-gpios = <&gpio2 14 GPIO_ACTIVE_LOW>;
-	phy-reset-duration = <1>;*/
 	status = "okay";
+
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+
+	fec_mdio: mdio {
+		/* nope */
+	};
 };
 
 &i2c2 {
