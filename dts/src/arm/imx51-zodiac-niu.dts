@@ -39,6 +39,24 @@
 		};
 	};
 
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg_mmc_reader_reset: regulator@0 {
+			compatible = "regulator-fixed";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usbotgreg>;
+			reg = <0>;
+			regulator-name = "sd_reader_reset";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio3 5 GPIO_ACTIVE_HIGH>;
+			enable-active-high;
+		};
+	};
+
 	dsa@0 {
 		compatible = "marvell,dsa";
 		#address-cells = <2>;
@@ -327,9 +345,10 @@
 };
 
 &usbotg {
-	dr_mode = "otg";
+	dr_mode = "host";
 	disable-over-current;
 	phy_type = "utmi_wide";
+	vbus-supply = <&reg_mmc_reader_reset>;
 	status = "okay";
 };
 
@@ -512,6 +531,13 @@
 			>;
 		};
 
+		/* done */
+		pinctrl_usbotgreg: usbotgreggrp {
+			fsl,pins = <
+				MX51_PAD_DISPB2_SER_DIN__GPIO3_5	0x85
+			>;
+		};
+
 		/* gpio, tie to? check */
 		pinctrl_gpio: miscgpiosgrp {
 			fsl,pins = <
@@ -571,8 +597,7 @@
 				/* SD4 Card Detect */
 				MX51_PAD_NANDF_D0__GPIO4_8		0x5
 
-				/* USB_BRIDGE_RESET_n and 3x n.u. */
-				MX51_PAD_DISPB2_SER_DIN__GPIO3_5	0x5
+				/* 3x n.u. */
 				MX51_PAD_DISPB2_SER_DIO__GPIO3_6	0x5
 				MX51_PAD_DISPB2_SER_CLK__GPIO3_7	0x5
 				MX51_PAD_DISPB2_SER_RS__GPIO3_8		0x5
