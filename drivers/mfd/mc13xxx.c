@@ -219,6 +219,8 @@ static struct __init {
 	{ 0x0a, MC13892_REVISION_1_2, "1.2" },
 	{ 0x10, MC13892_REVISION_2_0, "2.0" },
 	{ 0x11, MC13892_REVISION_2_1, "2.1" },
+	{ 0x12, MC13892_REVISION_2_2, "2.2" },
+	{ 0x13, MC13892_REVISION_2_3, "2.3" },
 	{ 0x14, MC13892_REVISION_2_4, "2.4" },
 	{ 0x18, MC13892_REVISION_3_0, "3.0" },
 	{ 0x19, MC13892_REVISION_3_1, "3.1" },
