@@ -368,6 +368,9 @@
 };
 
 &iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>;
+
 	imx51-zodiac-nui {
 		/* done */
 		pinctrl_pmic: pmicgrp {
@@ -548,7 +551,7 @@
 		};
 
 		/* gpio, tie to? check */
-		pinctrl_gpio: miscgpiosgrp {
+		pinctrl_hog: hoggrp {
 			fsl,pins = <
 				/* EIM as testpoint */
 				MX51_PAD_EIM_A27__GPIO2_21		0x5
@@ -603,9 +606,6 @@
 				/* MX51_PAD_CSPI1_RDY__GPIO4_26 */
 				MX51_PAD_CSPI1_RDY__GPIO4_26		0x5
 
-				/* SD4 Card Detect */
-				MX51_PAD_NANDF_D0__GPIO4_8		0x5
-
 				/* 3x n.u. */
 				MX51_PAD_DISPB2_SER_DIO__GPIO3_6	0x5
 				MX51_PAD_DISPB2_SER_CLK__GPIO3_7	0x5
@@ -619,5 +619,251 @@
 				MX51_PAD_GPIO1_3__GPIO1_3		0x5
 			>;
 		};
+	};
+};
+
+&gpio1 {
+	gpio1_2 {
+		gpio-hog;
+		gpios = <2 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "host_interrupt_n";
+	};
+	gpio1_3 {
+		gpio-hog;
+		gpios = <3 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "gpio1_3";
+	};
+	gpio1_4 {
+		gpio-hog;
+		gpios = <4 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "gpio1_4";
+	};
+	gpio1_8 {
+		gpio-hog;
+		gpios = <8 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio1_8";
+	};
+	gpio1_13 {
+		gpio-hog;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "pinstrap1";
+	};
+	gpio1_14 {
+		gpio-hog;
+		gpios = <14 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "pinstrap2";
+	};
+	gpio1_15 {
+		gpio-hog;
+		gpios = <15 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "pinstrap3";
+	};
+	gpio1_16 {
+		gpio-hog;
+		gpios = <16 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "pinstrap4";
+	};
+	gpio1_17 {
+		gpio-hog;
+		gpios = <17 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "pinstrap5";
+	};
+	gpio1_24 {
+		gpio-hog;
+		gpios = <24 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "pinstrap6";
+	};
+	gpio1_27 {
+		gpio-hog;
+		gpios = <27 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "pinstrap7";
+	};
+};
+
+&gpio2 {
+	gpio2_27 {
+		gpio-hog;
+		export;
+		gpios = <27 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio2_27";
+	};
+	gpio2_28 {
+		gpio-hog;
+		export;
+		gpios = <28 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio2_28";
+	};
+	gpio2_29 {
+		gpio-hog;
+		export;
+		gpios = <29 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "fpga_reset_n";
+	};
+	gpio2_30 {
+		gpio-hog;
+		export;
+		gpios = <30 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "usb_hub_reset_n";
+	};
+};
+
+&gpio3 {
+	gpio3_6 {
+		gpio-hog;
+		export;
+		gpios = <6 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio3_6";
+	};
+	gpio3_7 {
+		gpio-hog;
+		export;
+		gpios = <7 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio3_7";
+	};
+	gpio3_8 {
+		gpio-hog;
+		export;
+		gpios = <8 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio3_8";
+	};
+	gpio3_12 {
+		gpio-hog;
+		export;
+		gpios = <12 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "ctrl0";
+	};
+	gpio3_13 {
+		gpio-hog;
+		export;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "ctrl1";
+	};
+	gpio3_14 {
+		gpio-hog;
+		export;
+		gpios = <14 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "ctrl2";
+	};
+	gpio3_15 {
+		gpio-hog;
+		export;
+		gpios = <15 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "ctrl3";
+	};
+};
+
+&gpio4 {
+	gpio4_3 {
+		gpio-hog;
+		export;
+		gpios = <3 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio4_3";
+	};
+	gpio4_4 {
+		gpio-hog;
+		export;
+		gpios = <4 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio4_4";
+	};
+	gpio4_5 {
+		gpio-hog;
+		export;
+		gpios = <5 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio4_5";
+	};
+	gpio4_6 {
+		gpio-hog;
+		export;
+		gpios = <6 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio4_6";
+	};
+	gpio4_9 {
+		gpio-hog;
+		export;
+		gpios = <9 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "ctrl4";
+	};
+	gpio4_10 {
+		gpio-hog;
+		export;
+		gpios = <10 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "int0";
+	};
+	gpio4_11 {
+		gpio-hog;
+		export;
+		gpios = <11 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "int1";
+	};
+	gpio4_12 {
+		gpio-hog;
+		export;
+		gpios = <12 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "int2";
+	};
+	gpio4_13 {
+		gpio-hog;
+		export;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "int3";
+	};
+	gpio4_14 {
+		gpio-hog;
+		export;
+		gpios = <14 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "int4";
+	};
+	gpio4_15 {
+		gpio-hog;
+		export;
+		gpios = <15 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "int5";
+	};
+	gpio4_20 {
+		gpio-hog;
+		export;
+		gpios = <20 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio4_20";
+	};
+	gpio4_21 {
+		gpio-hog;
+		export;
+		gpios = <21 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "gpio4_21";
 	};
 };
