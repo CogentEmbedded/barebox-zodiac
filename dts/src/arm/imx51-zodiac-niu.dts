@@ -68,7 +68,8 @@
 		switch@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0 0>;	/* MDIO address 0, switch 0 in tree */
+			reg = <0x00 0>;	/* MDIO address 0, switch 0 in tree */
+			eeprom-length = <512>;
 
 			port@0 {
 				reg = <0>;
@@ -101,6 +102,11 @@
 			port@6 {
 				reg = <6>;
 				label = "cpu";
+				phy-mode = "mii";
+				fixed-link {
+					speed = <100>;
+					full-duplex;
+				};
 			};
 		};
        };
@@ -276,17 +282,20 @@
 
 /* Add eth switch? */
 &fec {
+	phy-mode = "mii";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec>;
 	status = "okay";
 
 	fixed-link {
-		speed = <1000>;
+		speed = <100>;
 		full-duplex;
 	};
 
 	fec_mdio: mdio {
-		/* nope */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
 	};
 };
 
