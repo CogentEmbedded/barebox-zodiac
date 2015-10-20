@@ -368,6 +368,10 @@
 	status = "okay";
 };
 
+&ipu {
+	status = "disabled";
+};
+
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog>;
