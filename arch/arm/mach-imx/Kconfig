@@ -355,12 +355,16 @@ config MACH_CM_FX6
 	bool "CM FX6"
 	select ARCH_IMX6
 
+config MACH_ZODIAC
+	bool
+
 config MACH_ZODIAC_NIU
 	bool "Zodiac i.MX51 Network Interface Unit"
 	select ARCH_IMX51
 	select SPI
 	select DRIVER_SPI_IMX
 	select MFD_MC13XXX
+	select MACH_ZODIAC
 
 endif
 

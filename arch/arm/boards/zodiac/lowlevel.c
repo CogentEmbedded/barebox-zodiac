@@ -37,6 +37,7 @@ static inline void setup_uart(void)
 	putc_ll('>');
 }
 
+#ifdef CONFIG_MACH_ZODIAC_NIU
 extern char __dtb_imx51_zodiac_niu_start[];
 
 ENTRY_FUNCTION(start_zodiac_niu, r0, r1, r2)
@@ -54,6 +55,7 @@ ENTRY_FUNCTION(start_zodiac_niu, r0, r1, r2)
 
 	imx51_barebox_entry(fdt);
 }
+#endif
 
 static noinline void zodiac_entry(void)
 {
@@ -67,6 +69,7 @@ static noinline void zodiac_entry(void)
 	imx51_barebox_entry(NULL);
 }
 
+#ifdef CONFIG_MACH_ZODIAC_NIU
 ENTRY_FUNCTION(start_zodiac_niu_xload, r0, r1, r2)
 {
 	imx5_cpu_lowlevel_init();
@@ -78,3 +81,4 @@ ENTRY_FUNCTION(start_zodiac_niu_xload, r0, r1, r2)
 
 	zodiac_entry();
 }
+#endif
