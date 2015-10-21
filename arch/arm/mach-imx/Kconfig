@@ -321,12 +321,16 @@ config MACH_ZII_RDU2
 	bool "Zodiac Inflight Innovation i.MX6Q RDU2"
 	select ARCH_IMX6
 
+config MACH_ZODIAC
+	bool
+
 config MACH_ZODIAC_NIU
 	bool "Zodiac i.MX51 Network Interface Unit"
 	select ARCH_IMX51
 	select SPI
 	select DRIVER_SPI_IMX
 	select MFD_MC13XXX
+	select MACH_ZODIAC
 
 endif
 
