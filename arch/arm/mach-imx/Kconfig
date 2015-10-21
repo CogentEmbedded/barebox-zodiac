@@ -41,6 +41,7 @@ config ARCH_TEXT_BASE
 	default 0x4fc00000 if MACH_PHYTEC_SOM_IMX6
 	default 0x9fc00000 if MACH_WARP7
 	default 0x97f00000 if MACH_ZODIAC_NIU
+	default 0x97f00000 if MACH_ZODIAC_MEZZ
 
 config ARCH_IMX_IMXIMAGE
 	bool
@@ -256,6 +257,14 @@ config MACH_ZODIAC
 
 config MACH_ZODIAC_NIU
 	bool "Zodiac i.MX51 Network Interface Unit"
+	select ARCH_IMX51
+	select SPI
+	select DRIVER_SPI_IMX
+	select MFD_MC13XXX
+	select MACH_ZODIAC
+
+config MACH_ZODIAC_MEZZ
+	bool "Zodiac i.MX51 Mezzanine Board"
 	select ARCH_IMX51
 	select SPI
 	select DRIVER_SPI_IMX
