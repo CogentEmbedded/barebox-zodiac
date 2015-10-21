@@ -251,12 +251,16 @@ config MACH_FREESCALE_MX51_PDK
 	select DRIVER_SPI_IMX
 	select MFD_MC13XXX
 
+config MACH_ZODIAC
+	bool
+
 config MACH_ZODIAC_NIU
 	bool "Zodiac i.MX51 Network Interface Unit"
 	select ARCH_IMX51
 	select SPI
 	select DRIVER_SPI_IMX
 	select MFD_MC13XXX
+	select MACH_ZODIAC
 
 config MACH_CCMX53
 	bool "Digi ConnectCore i.MX53"
