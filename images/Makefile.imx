@@ -70,6 +70,16 @@ CFG_start_zodiac_xload.pblx.imximg = $(board)/zodiac/flash-header-zodiac-xload.i
 FILE_barebox-zodiac-niu-xload.img = start_zodiac_niu_xload.pblx.imximg
 imx-xload-$(CONFIG_MACH_ZODIAC_NIU) += barebox-zodiac-niu-xload.img
 
+pblx-$(CONFIG_MACH_ZODIAC_MEZZ) += start_zodiac
+CFG_start_zodiac_mezz.pblx.imximg = $(board)/zodiac/flash-header-zodiac.imxcfg
+FILE_barebox-zodiac-mezz.img = start_zodiac_mezz.pblx.imximg
+imx-barebox-$(CONFIG_MACH_ZODIAC_MEZZ) += barebox-zodiac-mezz.img
+
+pblx-$(CONFIG_MACH_ZODIAC_MEZZ) += start_zodiac_xload
+CFG_start_zodiac_mezz_xload.pblx.imximg = $(board)/zodiac/flash-header-zodiac-xload.imxcfg
+FILE_barebox-zodiac-mezz-xload.img = start_zodiac_mezz_xload.pblx.imximg
+imx-xload-$(CONFIG_MACH_ZODIAC_MEZZ) += barebox-zodiac-mezz-xload.img
+
 ifdef CONFIG_ARCH_IMX_XLOAD
 image-y += $(imx-xload-y)
 else
