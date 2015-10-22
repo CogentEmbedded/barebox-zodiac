@@ -14,8 +14,8 @@
 #include "imx51.dtsi"
 
 / {
-	model = "Zodiac NUI board";
-	compatible = "fsl,imx51-zodiac-nui", "fsl,imx51";
+	model = "Zodiac NIU board";
+	compatible = "fsl,imx51-zodiac-niu", "fsl,imx51";
 
 	chosen {
 		stdout-path = &uart1;
@@ -26,10 +26,6 @@
 	};
 
 	clocks {
-		ckih1 {
-			clock-frequency = <22579200>;
-		};
-
 		clk_26M: codec_clock {
 			compatible = "fixed-clock";
 			reg=<0>;
