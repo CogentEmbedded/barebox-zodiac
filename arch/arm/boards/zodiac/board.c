@@ -161,6 +161,9 @@ static int imx51_zodiac_init(void)
 	} else if (of_machine_is_compatible("fsl,imx51-zodiac-mezz")) {
 		barebox_set_hostname("zodiac_mezz");
 		barebox_set_model("SCU Mezzanine");
+	} else if (of_machine_is_compatible("fsl,imx51-zodiac-esb")) {
+		barebox_set_hostname("zodiac_esb");
+		barebox_set_model("ESB");
 	} else if (of_machine_is_compatible("fsl,imx51-zodiac-rdu-c")) {
 		barebox_set_hostname("zodiac_rdu_c");
 		barebox_set_model("RDU Rev C (or greater)");
