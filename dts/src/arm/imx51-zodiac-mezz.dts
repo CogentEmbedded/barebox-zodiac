@@ -283,12 +283,6 @@
 	status = "okay";
 };
 
-&weim {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_weim>;
-	status = "okay";
-};
-
 &ipu {
 	status = "disabled";
 };
@@ -404,60 +398,8 @@
 				MX51_PAD_DI2_PIN4__FEC_CRS		0x00000180
 				/* PHY Reset */
 				MX51_PAD_EIM_A20__GPIO2_14		0x00000085
-			>;
-		};
-
-		/* done */
-		pinctrl_weim: weimgrp {
-			fsl,pins = <
-				MX51_PAD_EIM_DA0__EIM_DA0		0x80000000
-				MX51_PAD_EIM_DA1__EIM_DA1		0x80000000
-				MX51_PAD_EIM_DA2__EIM_DA2		0x80000000
-				MX51_PAD_EIM_DA3__EIM_DA3		0x80000000
-				MX51_PAD_EIM_DA4__EIM_DA4		0x80000000
-				MX51_PAD_EIM_DA5__EIM_DA5		0x80000000
-				MX51_PAD_EIM_DA6__EIM_DA6		0x80000000
-				MX51_PAD_EIM_DA7__EIM_DA7		0x80000000
-				MX51_PAD_EIM_DA8__EIM_DA8		0x80000000
-				MX51_PAD_EIM_DA9__EIM_DA9		0x80000000
-				MX51_PAD_EIM_DA10__EIM_DA10		0x80000000
-				MX51_PAD_EIM_DA11__EIM_DA11		0x80000000
-				MX51_PAD_EIM_DA12__EIM_DA12		0x80000000
-				MX51_PAD_EIM_DA13__EIM_DA13		0x80000000
-				MX51_PAD_EIM_DA14__EIM_DA14		0x80000000
-				MX51_PAD_EIM_DA15__EIM_DA15		0x80000000
-				MX51_PAD_EIM_D16__EIM_D16		0x80000000
-				MX51_PAD_EIM_D17__EIM_D17		0x80000000
-				MX51_PAD_EIM_D18__EIM_D18		0x80000000
-				MX51_PAD_EIM_D19__EIM_D19		0x80000000
-				MX51_PAD_EIM_D20__EIM_D20		0x80000000
-				MX51_PAD_EIM_D21__EIM_D21		0x80000000
-				MX51_PAD_EIM_D22__EIM_D22		0x80000000
-				MX51_PAD_EIM_D23__EIM_D23		0x80000000
-				MX51_PAD_EIM_D24__EIM_D24		0x80000000
-				MX51_PAD_EIM_D25__EIM_D25		0x80000000
-				MX51_PAD_EIM_D26__EIM_D26		0x80000000
-				MX51_PAD_EIM_D28__EIM_D28		0x80000000
-				MX51_PAD_EIM_D29__EIM_D29		0x80000000
-				MX51_PAD_EIM_D30__EIM_D30		0x80000000
-				MX51_PAD_EIM_D31__EIM_D31		0x80000000
-				MX51_PAD_EIM_A16__EIM_A16		0x80000000
-				/* MX51_PAD_EIM_A17__EIM_A17		0x80000000 - used as gpio for LED */
-				MX51_PAD_EIM_A18__EIM_A18		0x80000000
-				MX51_PAD_EIM_A19__EIM_A19		0x80000000
-				/* MX51_PAD_EIM_A20__EIM_A20		0x80000000 - used as gpio for PHY reset */
-				MX51_PAD_EIM_A21__EIM_A21		0x80000000 /* may be used as PHY IRQ */
-				MX51_PAD_EIM_A22__EIM_A22		0x80000000
-				MX51_PAD_EIM_A23__EIM_A23		0x80000000
-				MX51_PAD_EIM_A24__EIM_A24		0x80000000
-				MX51_PAD_EIM_A25__EIM_A25		0x80000000
-				MX51_PAD_EIM_A26__EIM_A26		0x80000000
-				MX51_PAD_EIM_EB0__EIM_EB0		0x80000000
-				MX51_PAD_EIM_EB1__EIM_EB1		0x80000000
-				MX51_PAD_EIM_OE__EIM_OE			0x80000000
-				/* EIM_RW - no mux */
-				MX51_PAD_EIM_CS0__EIM_CS0		0x80000000
-				MX51_PAD_EIM_CS1__EIM_CS1		0x80000000
+				/* PHY IRQ */
+				MX51_PAD_EIM_A21__GPIO2_15		0x000000e5
 			>;
 		};
 
@@ -609,156 +551,102 @@
 	};
 };
 
-/*
 &gpio1 {
 	gpio1_2 {
 		gpio-hog;
 		gpios = <2 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "host_interrupt_n";
+		output-low;
+		line-name = "gpio1_2";
 	};
 	gpio1_3 {
 		gpio-hog;
 		gpios = <3 GPIO_ACTIVE_HIGH>;
-		output-low;
+		input;
 		line-name = "gpio1_3";
 	};
-	gpio1_4 {
+	gpio1_7 {
 		gpio-hog;
-		gpios = <4 GPIO_ACTIVE_HIGH>;
-		output-low;
-		line-name = "gpio1_4";
-	};
-	gpio1_8 {
-		gpio-hog;
-		gpios = <8 GPIO_ACTIVE_HIGH>;
+		gpios = <7 GPIO_ACTIVE_HIGH>;
 		input;
-		line-name = "gpio1_8";
+		line-name = "gpio1_7";
+	};
+	gpio1_9 {
+		gpio-hog;
+		gpios = <9 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "gpio1_9";
+	};
+	gpio1_11 {
+		gpio-hog;
+		gpios = <11 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "discrete_in_z_1";
+	};
+	gpio1_12 {
+		gpio-hog;
+		gpios = <12 GPIO_ACTIVE_HIGH>;
+		input;
+		line-name = "discrete_in_z_2";
 	};
 	gpio1_13 {
 		gpio-hog;
 		gpios = <13 GPIO_ACTIVE_HIGH>;
 		input;
-		line-name = "pinstrap1";
+		line-name = "discrete_in_z_3";
 	};
 	gpio1_14 {
 		gpio-hog;
 		gpios = <14 GPIO_ACTIVE_HIGH>;
 		input;
-		line-name = "pinstrap2";
+		line-name = "discrete_in_z_4";
 	};
 	gpio1_15 {
 		gpio-hog;
 		gpios = <15 GPIO_ACTIVE_HIGH>;
 		input;
-		line-name = "pinstrap3";
+		line-name = "discrete_in_z_5";
 	};
 	gpio1_16 {
 		gpio-hog;
 		gpios = <16 GPIO_ACTIVE_HIGH>;
 		input;
-		line-name = "pinstrap4";
+		line-name = "discrete_in_z_6";
 	};
 	gpio1_17 {
 		gpio-hog;
 		gpios = <17 GPIO_ACTIVE_HIGH>;
 		input;
-		line-name = "pinstrap5";
+		line-name = "scu_disable_b";
 	};
-	gpio1_24 {
+	gpio1_18 {
 		gpio-hog;
-		gpios = <24 GPIO_ACTIVE_HIGH>;
+		gpios = <18 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "scu_active_out";
+	};
+	gpio1_25 {
+		gpio-hog;
+		gpios = <25 GPIO_ACTIVE_HIGH>;
 		input;
-		line-name = "pinstrap6";
+		line-name = "primary_scu_b";
+	};
+	gpio1_26 {
+		gpio-hog;
+		gpios = <26 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "discrete_out_z_1";
 	};
 	gpio1_27 {
 		gpio-hog;
 		gpios = <27 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "pinstrap7";
+		output-low;
+		line-name = "discrete_out_z_2";
 	};
-};
-
-&gpio2 {
-	gpio2_27 {
+	gpio1_28 {
 		gpio-hog;
-		export;
-		gpios = <27 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "gpio2_27";
-	};
-	gpio2_28 {
-		gpio-hog;
-		export;
 		gpios = <28 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "gpio2_28";
-	};
-	gpio2_29 {
-		gpio-hog;
-		export;
-		gpios = <29 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "fpga_reset_n";
-	};
-	gpio2_30 {
-		gpio-hog;
-		export;
-		gpios = <30 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "usb_hub_reset_n";
-	};
-};
-
-&gpio3 {
-	gpio3_6 {
-		gpio-hog;
-		export;
-		gpios = <6 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "gpio3_6";
-	};
-	gpio3_7 {
-		gpio-hog;
-		export;
-		gpios = <7 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "gpio3_7";
-	};
-	gpio3_8 {
-		gpio-hog;
-		export;
-		gpios = <8 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "gpio3_8";
-	};
-	gpio3_12 {
-		gpio-hog;
-		export;
-		gpios = <12 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "ctrl0";
-	};
-	gpio3_13 {
-		gpio-hog;
-		export;
-		gpios = <13 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "ctrl1";
-	};
-	gpio3_14 {
-		gpio-hog;
-		export;
-		gpios = <14 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "ctrl2";
-	};
-	gpio3_15 {
-		gpio-hog;
-		export;
-		gpios = <15 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "ctrl3";
+		output-low;
+		line-name = "discrete_out_z_3";
 	};
 };
 
@@ -791,68 +679,39 @@
 		input;
 		line-name = "gpio4_6";
 	};
-	gpio4_9 {
+	gpio4_18 {
 		gpio-hog;
 		export;
-		gpios = <9 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "ctrl4";
+		gpios = <18 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "gpio4_18";
 	};
-	gpio4_10 {
+	gpio4_19 {
 		gpio-hog;
 		export;
-		gpios = <10 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "int0";
-	};
-	gpio4_11 {
-		gpio-hog;
-		export;
-		gpios = <11 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "int1";
-	};
-	gpio4_12 {
-		gpio-hog;
-		export;
-		gpios = <12 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "int2";
-	};
-	gpio4_13 {
-		gpio-hog;
-		export;
-		gpios = <13 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "int3";
-	};
-	gpio4_14 {
-		gpio-hog;
-		export;
-		gpios = <14 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "int4";
-	};
-	gpio4_15 {
-		gpio-hog;
-		export;
-		gpios = <15 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "int5";
+		gpios = <19 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "gpio4_19";
 	};
 	gpio4_20 {
 		gpio-hog;
 		export;
 		gpios = <20 GPIO_ACTIVE_HIGH>;
-		input;
+		output-low;
 		line-name = "gpio4_20";
 	};
 	gpio4_21 {
 		gpio-hog;
 		export;
 		gpios = <21 GPIO_ACTIVE_HIGH>;
-		output-high;
+		output-low;
 		line-name = "gpio4_21";
 	};
+	gpio4_26 {
+		gpio-hog;
+		export;
+		gpios = <26 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "gpio4_26";
+	};
 };
-*/
