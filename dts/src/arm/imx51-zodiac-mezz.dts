@@ -216,9 +216,41 @@
 	cs-gpios = <&gpio3 24 GPIO_ACTIVE_LOW>,
 		   <&gpio3 28 GPIO_ACTIVE_LOW>;
 	status = "okay";
-	/* A429 devices here! */
-	/* pinctrl_arinc1 */
-	/* pinctrl_arinc2 */
+
+	/* ARINC 429 devices */
+	arinc1: hi3593@0 {
+		compatible = "holtic,hi3593";
+		spi-max-frequency = <5000000>;
+		reg = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_arinc1>;
+		status = "okay";
+
+		master_reset-gpio = <&gpio3 12 GPIO_ACTIVE_HIGH>;
+		r1_int-gpio = <&gpio3 3 GPIO_ACTIVE_HIGH>;
+		r1_flag-gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
+		r2_int-gpio = <&gpio3 4 GPIO_ACTIVE_HIGH>;
+		r2_flag-gpio = <&gpio3 8 GPIO_ACTIVE_HIGH>;
+		tx_full-gpio = <&gpio4 1 GPIO_ACTIVE_HIGH>;
+		tx_empty-gpio = <&gpio4 0 GPIO_ACTIVE_HIGH>;
+	};
+
+	arinc2: hi3593@1 {
+		compatible = "holtic,hi3593";
+		spi-max-frequency = <5000000>;
+		reg = <1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_arinc2>;
+		status = "okay";
+
+		master_reset-gpio = <&gpio3 27 GPIO_ACTIVE_HIGH>;
+		r1_int-gpio = <&gpio3 5 GPIO_ACTIVE_HIGH>;
+		r1_flag-gpio = <&gpio3 16 GPIO_ACTIVE_HIGH>;
+		r2_int-gpio = <&gpio3 6 GPIO_ACTIVE_HIGH>;
+		r2_flag-gpio = <&gpio3 17 GPIO_ACTIVE_HIGH>;
+		tx_full-gpio = <&gpio3 31 GPIO_ACTIVE_HIGH>;
+		tx_empty-gpio = <&gpio3 30 GPIO_ACTIVE_HIGH>;
+	};
 };
 
 /* eMMC */
