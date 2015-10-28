@@ -51,6 +51,69 @@
 			enable-active-high;
 		};
 	};
+
+	sw_mdio: swmdio {
+		compatible = "virtual,mdio-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_swmdio>;
+		gpios = <&gpio2 7 GPIO_ACTIVE_LOW>,	/* MDC */
+			<&gpio2 6 GPIO_ACTIVE_LOW>;	/* MDIO */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+	};
+
+	dsa@0 {
+		compatible = "marvell,dsa";
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		dsa,ethernet = <&fec>;
+		dsa,mii-bus = <&sw_mdio>;
+
+		switch@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x00 0>;	/* MDIO address 0, switch 0 in tree */
+			eeprom-length = <512>;
+			reset-gpios = <&gpio4 26 GPIO_ACTIVE_LOW>;
+
+			port@0 {
+				reg = <0>;
+				label = "port4";
+			};
+
+			port@1 {
+				reg = <1>;
+				label = "port5";
+			};
+
+			port@2 {
+				reg = <2>;
+				label = "port6";
+			};
+
+			port@3 {
+				reg = <3>;
+				label = "port7";
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "cpu";
+			};
+
+			port@5 {
+				reg = <5>;
+				label = "mezz2esb";
+				phy-mode = "sgmii";
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+				};
+			};
+		};
+	};
 };
 
 &ecspi1 {
