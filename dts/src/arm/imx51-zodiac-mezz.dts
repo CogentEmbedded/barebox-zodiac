@@ -206,15 +206,21 @@
 		reg = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_arinc1>;
-		status = "okay";
+		arinc-frequency = <1000000>;
+
+		/* fine tune initial channel settings, see datasheet for register settings: */
+		/* flip bits, no parity */
+		r1_ctrl = /bits/ 8 <0x88>;
+		r2_ctrl = /bits/ 8 <0x88>;
+		/* flip bits */
+		tx_ctrl = /bits/ 8 <0x40>;
 
 		master_reset-gpio = <&gpio3 12 GPIO_ACTIVE_HIGH>;
 		r1_int-gpio = <&gpio3 3 GPIO_ACTIVE_HIGH>;
 		r1_flag-gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
 		r2_int-gpio = <&gpio3 4 GPIO_ACTIVE_HIGH>;
 		r2_flag-gpio = <&gpio3 8 GPIO_ACTIVE_HIGH>;
-		tx_full-gpio = <&gpio4 1 GPIO_ACTIVE_HIGH>;
-		tx_empty-gpio = <&gpio4 0 GPIO_ACTIVE_HIGH>;
+		status = "okay";
 	};
 
 	arinc2: hi3593@1 {
@@ -223,15 +229,21 @@
 		reg = <1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_arinc2>;
-		status = "okay";
+		arinc-frequency = <1000000>;
+
+		/* fine tune initial channel settings, see datasheet for register settings: */
+		/* flip bits, no parity */
+		r1_ctrl = /bits/ 8 <0x88>;
+		r2_ctrl = /bits/ 8 <0x88>;
+		/* flip bits */
+		tx_ctrl = /bits/ 8 <0x40>;
 
 		master_reset-gpio = <&gpio3 27 GPIO_ACTIVE_HIGH>;
 		r1_int-gpio = <&gpio3 5 GPIO_ACTIVE_HIGH>;
 		r1_flag-gpio = <&gpio3 16 GPIO_ACTIVE_HIGH>;
 		r2_int-gpio = <&gpio3 6 GPIO_ACTIVE_HIGH>;
 		r2_flag-gpio = <&gpio3 17 GPIO_ACTIVE_HIGH>;
-		tx_full-gpio = <&gpio3 31 GPIO_ACTIVE_HIGH>;
-		tx_empty-gpio = <&gpio3 30 GPIO_ACTIVE_HIGH>;
+		status = "okay";
 	};
 };
 
