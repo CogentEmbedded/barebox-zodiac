@@ -209,11 +209,11 @@
 		arinc-frequency = <1000000>;
 
 		/* fine tune initial channel settings, see datasheet for register settings: */
-		/* flip bits, no parity */
+		/* flip label bits, no parity */
 		r1_ctrl = /bits/ 8 <0x88>;
 		r2_ctrl = /bits/ 8 <0x88>;
-		/* flip bits */
-		tx_ctrl = /bits/ 8 <0x40>;
+		/* flip label bits, send as soon as message is written to FIFO */
+		tx_ctrl = /bits/ 8 <0x60>;
 
 		master_reset-gpio = <&gpio3 12 GPIO_ACTIVE_HIGH>;
 		r1_int-gpio = <&gpio3 3 GPIO_ACTIVE_HIGH>;
@@ -232,11 +232,11 @@
 		arinc-frequency = <1000000>;
 
 		/* fine tune initial channel settings, see datasheet for register settings: */
-		/* flip bits, no parity */
+		/* flip label bits, no parity */
 		r1_ctrl = /bits/ 8 <0x88>;
 		r2_ctrl = /bits/ 8 <0x88>;
-		/* flip bits */
-		tx_ctrl = /bits/ 8 <0x40>;
+		/* flip label bits, send as soon as message is written to FIFO */
+		tx_ctrl = /bits/ 8 <0x60>;
 
 		master_reset-gpio = <&gpio3 27 GPIO_ACTIVE_HIGH>;
 		r1_int-gpio = <&gpio3 5 GPIO_ACTIVE_HIGH>;
