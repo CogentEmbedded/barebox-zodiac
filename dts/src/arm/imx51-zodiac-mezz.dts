@@ -238,6 +238,8 @@
 		r1_flag-gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
 		r2_int-gpio = <&gpio3 4 GPIO_ACTIVE_HIGH>;
 		r2_flag-gpio = <&gpio3 8 GPIO_ACTIVE_HIGH>;
+		tx_full-gpio = <&gpio4 1 GPIO_ACTIVE_HIGH>;
+		tx_empty-gpio = <&gpio4 0 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 
@@ -261,6 +263,8 @@
 		r1_flag-gpio = <&gpio3 16 GPIO_ACTIVE_HIGH>;
 		r2_int-gpio = <&gpio3 6 GPIO_ACTIVE_HIGH>;
 		r2_flag-gpio = <&gpio3 17 GPIO_ACTIVE_HIGH>;
+		tx_full-gpio = <&gpio3 31 GPIO_ACTIVE_HIGH>;
+		tx_empty-gpio = <&gpio3 30 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 };
