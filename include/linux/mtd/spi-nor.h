@@ -121,6 +121,18 @@ enum spi_nor_option_flags {
 };
 
 /**
+ * struct spi_nor_timings - Structure containing maximum timing values
+ * for various write/erase operations (per chip's specification)
+ *
+ * @sector_erase:	maximum amount of time it takes to erase a sector
+ * @chip_erase:		maximum amount of time it takes to erase whole chip
+ */
+struct spi_nor_timings {
+	uint64_t sector_erase;
+	uint64_t chip_erase;
+};
+
+/**
  * struct spi_nor - Structure for defining a the SPI NOR layer
  * @mtd:		point to a mtd_info structure
  * @lock:		the lock for the read/write/erase/lock/unlock operations
@@ -162,6 +174,7 @@ struct spi_nor {
 	u8			program_opcode;
 	enum read_mode		flash_read;
 	bool			sst_write_second;
+	struct spi_nor_timings  timings;
 	u32			flags;
 	struct spi_nor_xfer_cfg	cfg;
 	u8			cmd_buf[SPI_NOR_MAX_CMD_SIZE];
