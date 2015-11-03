@@ -232,6 +232,13 @@
 		r2_ctrl = /bits/ 8 <0x88>;
 		/* flip label bits, send as soon as message is written to FIFO */
 		tx_ctrl = /bits/ 8 <0x60>;
+		/* flag and interrupt assignment register:
+		 * - RxINT triggers when any valid message received
+		 * - RxFLAG IRQ triggers when FIFO half full */
+		flag_iar = /bits/ 8 <0x22>;
+
+		/* receiver label filters as bitmaps */
+		r1_lf = "241,255";
 
 		master_reset-gpio = <&gpio3 12 GPIO_ACTIVE_HIGH>;
 		r1_int-gpio = <&gpio3 3 GPIO_ACTIVE_HIGH>;
@@ -257,6 +264,13 @@
 		r2_ctrl = /bits/ 8 <0x88>;
 		/* flip label bits, send as soon as message is written to FIFO */
 		tx_ctrl = /bits/ 8 <0x60>;
+		/* flag and interrupt assignment register:
+		 * - RxINT triggers when any valid message received
+		 * - RxFLAG IRQ triggers when FIFO half full */
+		flag_iar = /bits/ 8 <0x22>;
+
+		/* receiver label filters as bitmaps */
+		r2_lf = "32-34,255";
 
 		master_reset-gpio = <&gpio3 27 GPIO_ACTIVE_HIGH>;
 		r1_int-gpio = <&gpio3 5 GPIO_ACTIVE_HIGH>;
