@@ -216,6 +216,24 @@
 				regulator-always-on;
 			};
 		};
+
+		leds {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			led-control = <0x0 0x0 0x3f83f8 0x0>;
+
+			sysled0 {
+				reg = <3>;
+				label = "system:green:live";
+				linux,default-trigger = "heartbeat";
+			};
+
+			sysled1 {
+				reg = <4>;
+				label = "system:green:act";
+				linux,default-trigger = "mmc0";
+			};
+		};
 	};
 
 	flash: at45db642d@1 {
