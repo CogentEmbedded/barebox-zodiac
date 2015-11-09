@@ -179,8 +179,17 @@ __noreturn void barebox_non_pbl_start(unsigned long membase,
 		const char *name;
 
 		if (blob_is_fdt(boarddata)) {
-			totalsize = get_unaligned_be32(boarddata + 4);
-			name = "DTB";
+			if (!IS_ENABLED(CONFIG_RELOCATABLE)
+			    && !IS_ENABLED(CONFIG_PBL_IMAGE)) {
+				/*
+				  If Barebox is not relocatable
+				  there's no need to move data around
+				*/
+				barebox_boarddata = boarddata;
+			} else {
+				totalsize = get_unaligned_be32(boarddata + 4);
+				name = "DTB";
+			}
 		} else if (blob_is_compressed_fdt(boarddata)) {
 			struct barebox_arm_boarddata_compressed_dtb *bd = boarddata;
 			totalsize = bd->datalen + sizeof(*bd);
