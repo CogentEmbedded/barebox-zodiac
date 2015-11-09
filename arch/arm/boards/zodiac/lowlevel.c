@@ -97,6 +97,26 @@ ENTRY_FUNCTION(start_zodiac_esb, r0, r1, r2)
 }
 #endif
 
+#ifdef CONFIG_MACH_ZODIAC_RDU
+extern char __dtb_imx51_zodiac_rdu_start[];
+
+ENTRY_FUNCTION(start_zodiac_rdu, r0, r1, r2)
+{
+	void *fdt;
+
+	imx5_cpu_lowlevel_init();
+
+	if (IS_ENABLED(CONFIG_DEBUG_LL))
+		setup_uart();
+
+	arm_setup_stack(0x20000000 - 16);
+
+	fdt = __dtb_imx51_zodiac_rdu_start - get_runtime_offset();
+
+	imx51_barebox_entry(fdt);
+}
+#endif
+
 
 static noinline void zodiac_entry(void)
 {
@@ -140,6 +160,20 @@ ENTRY_FUNCTION(start_zodiac_mezz_xload, r0, r1, r2)
 
 #ifdef CONFIG_MACH_ZODIAC_ESB
 ENTRY_FUNCTION(start_zodiac_esb_xload, r0, r1, r2)
+{
+	imx5_cpu_lowlevel_init();
+
+	if (IS_ENABLED(CONFIG_DEBUG_LL))
+		setup_uart();
+
+	arm_setup_stack(0x20000000 - 16);
+
+	zodiac_entry();
+}
+#endif
+
+#ifdef CONFIG_MACH_ZODIAC_RDU
+ENTRY_FUNCTION(start_zodiac_rdu_xload, r0, r1, r2)
 {
 	imx5_cpu_lowlevel_init();
 

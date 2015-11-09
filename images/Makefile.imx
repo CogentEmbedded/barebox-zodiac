@@ -90,6 +90,11 @@ CFG_start_zodiac_esb_xload.pblx.imximg = $(board)/zodiac/flash-header-zodiac-xlo
 FILE_barebox-zodiac-esb-xload.img = start_zodiac_esb_xload.pblx.imximg
 imx-xload-$(CONFIG_MACH_ZODIAC_ESB) += barebox-zodiac-esb-xload.img
 
+pblx-$(CONFIG_MACH_ZODIAC_RDU) += start_zodiac
+CFG_start_zodiac_rdu.pblx.imximg = $(board)/zodiac/flash-header-zodiac.imxcfg
+FILE_barebox-zodiac-rdu.img = start_zodiac_rdu.pblx.imximg
+imx-barebox-$(CONFIG_MACH_ZODIAC_RDU) += barebox-zodiac-rdu.img
+
 ifdef CONFIG_ARCH_IMX_XLOAD
 image-y += $(imx-xload-y)
 else
