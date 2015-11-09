@@ -264,6 +264,11 @@
 		compatible = "m25p128";
 		spi-max-frequency = <20000000>;
 		reg = <0>;
+
+		partition@0 {
+			label = "barebox";
+			reg = <0x0 0x100000>;
+		};
 	};
 };
 
