@@ -1,0 +1,16 @@
+#
+# HWMON class/drivers configuration
+#
+
+menuconfig HWMON
+	tristate "Hardware Monitoring support"
+	default y
+	help
+	  Hardware monitoring devices let you monitor the hardware
+	  health of a system. If you want this support you should say
+	  Y here and also to the specific driver(s) for your sensors
+	  chip(s) below.
+
+if HWMON
+
+endif # HWMON

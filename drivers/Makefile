@@ -31,3 +31,4 @@ obj-y += rtc/
 obj-$(CONFIG_FIRMWARE) += firmware/
 obj-$(CONFIG_GENERIC_PHY) += phy/
 obj-$(CONFIG_HABV4) += habv4/
+obj-y += hwmon/
