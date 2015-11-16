@@ -2130,8 +2130,16 @@ config CMD_SEED
 # end Miscellaneous commands
 endmenu
 
+menu "Zodiac"
+config CMD_ZODIAC_PIC
+	bool
+	depends on MACH_ZODIAC
+	prompt "Zodiac PIC-related commands"
+	help
+	  Enable/disable WD, read EEPROM, boot reason etc.
 
 
+endmenu
 
 # end Commands
 endmenu
