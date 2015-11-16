@@ -1976,6 +1976,13 @@ config CMD_WD_DEFAULT_TIMOUT
 	  'wd' is done without a timeout value (which means the watchdog gets
 	  enabled and re-triggered with the default timeout value).
 
+config CMD_MMDC
+       tristate
+       depends on ARCH_IMX
+       prompt "mmdc"
+       help
+	 mmdc -- command to perform MMDC calibration
+
 # end Hardware manipulation commands
 endmenu
 
