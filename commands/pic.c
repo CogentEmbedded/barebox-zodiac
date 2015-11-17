@@ -29,7 +29,7 @@ int bootFailureIncremented = 0;
 
 static struct console_device *pic_cdev = NULL;
 
-void rdu_pic_uart_init(struct console_device *cdev, int speed)
+void pic_uart_init(struct console_device *cdev, int speed)
 {
 	pic_cdev = cdev;
 
@@ -45,19 +45,29 @@ void pic_putc(char c)
 
 int pic_getc(char chan, char *c)
 {
-	/* WARN: waits forever! */
-	*c = pic_cdev->getc(pic_cdev);
-	return 1;
+	int timeout = 1000; /* 1 mS */
+	while (timeout > 0) {
+		if (pic_cdev->tstc(pic_cdev)) {
+			*c = pic_cdev->getc(pic_cdev);
+			return 1;
+		}
+		udelay(100);
+		timeout -= 100;
+	}
+	return 0;
 }
 
-void rdu_pic_reset_comms(void)
+void pic_reset_comms(void)
 {
+	/* flush input */
+	while (pic_cdev->tstc(pic_cdev))
+		pic_cdev->getc(pic_cdev);
 	pic_putc('\x03');
 	pic_putc('\x03');
 	pic_putc('\x03');
 }
 
-static int rdu_pic_escape_data(unsigned char *out, const unsigned char* in, int len)
+static int pic_escape_data(unsigned char *out, const unsigned char* in, int len)
 {
 	unsigned char c;
 	unsigned char *out_temp = out;
@@ -73,7 +83,7 @@ static int rdu_pic_escape_data(unsigned char *out, const unsigned char* in, int 
 }
 
 // Calculates the simple checksum, and returns
-static unsigned char rdu_pic_calc_checksum(const unsigned char * in, int len)
+static unsigned char pic_calc_checksum(const unsigned char * in, int len)
 {
 	unsigned char sum = 0;
 	while(len--)
@@ -85,7 +95,7 @@ static unsigned char rdu_pic_calc_checksum(const unsigned char * in, int len)
 int pic_ack_id = 0;
 // Packs message into pic packet
 // Returns total message length
-static int rdu_pic_pack_msg(unsigned char *out, const unsigned char *in, char msg_type, int len)
+static int pic_pack_msg(unsigned char *out, const unsigned char *in, char msg_type, int len)
 {
 	unsigned char checksum;
 	unsigned char temp[256];
@@ -96,28 +106,30 @@ static int rdu_pic_pack_msg(unsigned char *out, const unsigned char *in, char ms
 	// because we have to escape the whole thing
 	temp[i++] = msg_type;
 	temp[i++] = ++pic_ack_id;
-	memcpy(&temp[i], in, len);
-	i += len;
+	if ((in) && (len)) {
+		memcpy(&temp[i], in, len);
+		i += len;
+	}
 
-	checksum = rdu_pic_calc_checksum(temp, i);
+	checksum = pic_calc_checksum(temp, i);
 
 	temp[i++] = checksum;
 
 	*out_temp++ = STX;
-	out_temp += rdu_pic_escape_data(out_temp, temp, i);
+	out_temp += pic_escape_data(out_temp, temp, i);
 	*out_temp++ = ETX;
 
 	return out_temp - out;
 }
 
 // Sends message to pic
-void rdu_pic_send_msg(const unsigned char *msg, char msg_type,int len)
+void pic_send_msg(const unsigned char *msg, char msg_type,int len)
 {
 	unsigned char out[256];
 	unsigned char *ptr;
 	int packet_len;
 
-	packet_len = rdu_pic_pack_msg(out, msg, msg_type, len);
+	packet_len = pic_pack_msg(out, msg, msg_type, len);
 
 	ptr = out;
 	while(packet_len--)
@@ -125,7 +137,7 @@ void rdu_pic_send_msg(const unsigned char *msg, char msg_type,int len)
 }
 
 // Returns length of data received
-int rdu_pic_recv_msg(unsigned char *out)
+int pic_recv_msg(unsigned char *out)
 {
 	// Do to some requests to the PIC taking upto 75 ms
 	// the max timeout has been set to 225 ms to be safe.
@@ -203,7 +215,7 @@ int rdu_pic_recv_msg(unsigned char *out)
  * Overview:        Reads a page of data from the specified EEPROM
  *
  *******************************************************************/
-int rdu_pic_GetRduEepromData(uint16_t pageNum, uint8_t *data)
+int pic_GetRduEepromData(uint16_t pageNum, uint8_t *data)
 {
 	unsigned char dataOut[64]   = {0};
 	unsigned char dataIn[64]    = {0};
@@ -216,13 +228,13 @@ int rdu_pic_GetRduEepromData(uint16_t pageNum, uint8_t *data)
 	dataOut[1] = (uint8_t)(pageNum & 0x00FF);
 	dataOut[2] = (uint8_t)((pageNum >> 8) & 0x00FF);
 
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
 	// Send out the message
-	rdu_pic_send_msg(dataOut, CMD_RDU_EEPROM, 3);
+	pic_send_msg(dataOut, CMD_PIC_EEPROM, 3);
 
 	// Receive the Message
-	recvLen = rdu_pic_recv_msg(dataIn);
+	recvLen = pic_recv_msg(dataIn);
 
 	if(recvLen <= 0 || dataIn[3] == 0)
 		return 1;
@@ -230,7 +242,7 @@ int rdu_pic_GetRduEepromData(uint16_t pageNum, uint8_t *data)
 	//data starts at byte 4 and runs through byte 35
 	//now place the data in the buffer
 	index = 4;
-	for(x = 0; x < RDU_PAGE_SIZE; x++)
+	for(x = 0; x < PIC_PAGE_SIZE; x++)
 		data[x] = dataIn[index++];
 
 	return 0;
@@ -247,7 +259,7 @@ int rdu_pic_GetRduEepromData(uint16_t pageNum, uint8_t *data)
  * Overview:        Writes a page of data to the specified EEPROM
  *
  *******************************************************************/
-int rdu_pic_SendRduEepromData(uint16_t pageNum, uint8_t *data)
+int pic_SendRduEepromData(uint16_t pageNum, uint8_t *data)
 {
 	unsigned char dataOut[64]   = {0};
 	unsigned char dataIn[64]    = {0};
@@ -265,16 +277,16 @@ int rdu_pic_SendRduEepromData(uint16_t pageNum, uint8_t *data)
 
 	index = 3;
 
-	for(x = 0; x < RDU_PAGE_SIZE; x++)
+	for(x = 0; x < PIC_PAGE_SIZE; x++)
 		dataOut[index++] = data[x];
 
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
 	//now send the data to the PIC to store to the RDU EEPROM
-	rdu_pic_send_msg(dataOut, CMD_RDU_EEPROM, 35);
+	pic_send_msg(dataOut, CMD_PIC_EEPROM, 35);
 
 	// Receive the ACK
-	recvLen = rdu_pic_recv_msg(dataIn);
+	recvLen = pic_recv_msg(dataIn);
 
 	if(recvLen > 0 || dataIn[3] == 1) {
 		return 0;
@@ -284,7 +296,7 @@ int rdu_pic_SendRduEepromData(uint16_t pageNum, uint8_t *data)
 }
 
 /* IMS: Add U-Boot commands to Get the IP Address and Netmask and Turn on the LCD Backlight using the Microchip PIC */
-void do_rdu_pic_get_ip(void)
+void do_pic_get_ip(void)
 {
 	unsigned char data[64];
 	int len;
@@ -306,13 +318,13 @@ void do_rdu_pic_get_ip(void)
 		return;
 	}
 */
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
 	data[0] = 0; // 0 = RDU, 1 = RJU
 	data[1] = 0; // 0 = Self, 1 = Pri Eth, 2 = Sec Eth, 3 = Aux Eth, 4 = SPB/SPU
 
-	rdu_pic_send_msg(data, CMD_REQ_IP_ADDR, 2);
-	len = rdu_pic_recv_msg(data);
+	pic_send_msg(data, CMD_REQ_IP_ADDR, 2);
+	len = pic_recv_msg(data);
 
 	if (len > 0) {
 		ip_extracted      = data[5] << 24 | data[4] << 16 | data[3] << 8 | data[2];
@@ -342,7 +354,7 @@ void do_rdu_pic_get_ip(void)
 }
 
 /* IMS: Add U-Boot commands to Turn on/off the LCD Backlight using the Microchip PIC */
-int do_rdu_pic_set_lcd(int argc, char *argv[])
+int do_pic_set_lcd(int argc, char *argv[])
 {
 	unsigned char data[64];
 	int len;
@@ -369,7 +381,7 @@ int do_rdu_pic_set_lcd(int argc, char *argv[])
 	brightness  = simple_strtol(argv[2], NULL, 10);
 	delay       = simple_strtol(argv[3], NULL, 10) * 1000;
 
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
 	brightness = brightness > 100 ? 100 : brightness;
 
@@ -378,16 +390,78 @@ int do_rdu_pic_set_lcd(int argc, char *argv[])
 	data[1] = delay & 0xFF;
 	data[2] = delay >> 8;
 
-	rdu_pic_send_msg(data, CMD_LCD_BACKLIGHT, 3);
-	len = rdu_pic_recv_msg(data);
+	pic_send_msg(data, CMD_LCD_BACKLIGHT, 3);
+	len = pic_recv_msg(data);
 
 	return 0;
 }
 
+int do_pic_en_lcd(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
 
+	if (!pic_cdev)
+		return -ENODEV;
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	pic_reset_comms();
+
+	pic_send_msg(NULL, CMD_LCD_BOOT_ENABLE, 0);
+	len = pic_recv_msg(data);
+
+	return 0;
+}
+
+int do_pic_status(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (!pic_cdev)
+		return -ENODEV;
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	pic_reset_comms();
+
+	pic_send_msg(NULL, CMD_STATUS, 0);
+	len = pic_recv_msg(data);
+
+	if (len < 0)
+		return len;
+
+	printf("RSP message %02x (%d)\n", data[0], len);
+
+	printf("BL: %d, %s, %d mA\n",
+		data[28] & 0x7f,
+		data[28] & 0x80 ? "en" : "dis",
+		(data[30] << 8) | data[29]);
+
+	return 0;
+}
+
+int do_pic_reset(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (!pic_cdev)
+		return -ENODEV;
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	data[0] = 1;
+	pic_send_msg(data, CMD_PIC_RESET, 1);
+
+	len = pic_recv_msg(data);
+
+	return 0;
+}
 
 /* IMS: Add U-Boot commands to Get the Reset reason from the Microchip PIC */
-int do_rdu_pic_get_reset (int argc, char *argv[])
+int do_pic_get_reset (int argc, char *argv[])
 {
 	unsigned char data[64];
 	int len;
@@ -409,10 +483,10 @@ int do_rdu_pic_get_reset (int argc, char *argv[])
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
-	rdu_pic_send_msg(data, CMD_RESET_REASON, 2);
-	len = rdu_pic_recv_msg(data);
+	pic_send_msg(data, CMD_RESET_REASON, 2);
+	len = pic_recv_msg(data);
 
 	if (len > 0)
 		reason_extracted = data[2];
@@ -475,13 +549,14 @@ int do_rdu_pic_get_reset (int argc, char *argv[])
 			break;
 
 		default: /* Can't happen? */
+			printf ("Reset Reason: Unknown 0x%x\n", reason_extracted);
 			break;
 	}
 
 	return 0;
 }
 
-BAREBOX_CMD_HELP_START(rdu_setlcd)
+BAREBOX_CMD_HELP_START(pic_setlcd)
 	BAREBOX_CMD_HELP_TEXT("Turn on the LCD Backlight via the Microchip PIC")
 	BAREBOX_CMD_HELP_TEXT("")
 	BAREBOX_CMD_HELP_TEXT("Options:")
@@ -490,22 +565,40 @@ BAREBOX_CMD_HELP_START(rdu_setlcd)
 	BAREBOX_CMD_HELP_OPT ("[time]", "time")
 BAREBOX_CMD_HELP_END
 
-BAREBOX_CMD_START(rdu_setlcd)
-	.cmd		= do_rdu_pic_set_lcd,
+BAREBOX_CMD_START(pic_setlcd)
+	.cmd		= do_pic_set_lcd,
 	BAREBOX_CMD_DESC("Turn on the LCD Backlight via the Microchip PIC")
 	BAREBOX_CMD_OPTS("[en] [level] [time]")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
-	BAREBOX_CMD_HELP(cmd_rdu_setlcd_help)
+	BAREBOX_CMD_HELP(cmd_pic_setlcd_help)
 BAREBOX_CMD_END
 
-BAREBOX_CMD_START(rdu_getreset)
-	.cmd		= do_rdu_pic_get_reset,
+BAREBOX_CMD_START(pic_enlcd)
+	.cmd		= do_pic_en_lcd,
+	BAREBOX_CMD_DESC("Enable LCD via the Microchip PIC")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_status)
+	.cmd		= do_pic_status,
+	BAREBOX_CMD_DESC("Get PIC status")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_getreset)
+	.cmd		= do_pic_get_reset,
 	BAREBOX_CMD_DESC("Read the Reset Reason from the Microchip PIC")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
+BAREBOX_CMD_START(pic_reset)
+	.cmd		= do_pic_reset,
+	BAREBOX_CMD_DESC("Reset Microchip PIC and whole system")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
 /* IMS: Add U-Boot commands to Pet the Watchdog Timer using the Microchip PIC */
-int do_rdu_pic_pet_wdt (int argc, char *argv[])
+int do_pic_pet_wdt (int argc, char *argv[])
 {
 	unsigned char data[64];
 	int len;
@@ -527,13 +620,13 @@ int do_rdu_pic_pet_wdt (int argc, char *argv[])
 
 	/* printf("do_pic_get_ip function called.\n"); */
 
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
 	data[0] = 0; // 0 = RDU, 1 = RJU
 	data[1] = 0; // 0 = Self, 1 = Pri Eth, 2 = Sec Eth, 3 = Aux Eth, 4 = SPB/SPU
 
-	rdu_pic_send_msg(data, CMD_PET_WDT, 2);
-	len = rdu_pic_recv_msg(data);
+	pic_send_msg(data, CMD_PET_WDT, 2);
+	len = pic_recv_msg(data);
 
 	if (len <= 0)
 		printf("ERROR: Unable to pet the Watchdog Timer\n!");
@@ -544,7 +637,7 @@ int do_rdu_pic_pet_wdt (int argc, char *argv[])
 
 
 /* IMS: Add U-Boot command to Enable and Set the Watchdog Timer using the Microchip PIC */
-int do_rdu_pic_set_wdt (int argc, char *argv[])
+int do_pic_set_wdt (int argc, char *argv[])
 {
 	unsigned char data[64];
 	int len;
@@ -563,13 +656,16 @@ int do_rdu_pic_set_wdt (int argc, char *argv[])
 */
 	if (!pic_cdev)
 		return -ENODEV;
-	if (argc != 3)
+	if ((argc != 2) && (argc != 3))
 		return COMMAND_ERROR_USAGE;
 
-	enable  = simple_strtol(argv[1], NULL, 10);
-	timeout = simple_strtol(argv[2], NULL, 10);
+	enable = simple_strtol(argv[1], NULL, 10);
 
-	if (enable != 0) {
+	if (enable) {
+		if (argc != 3)
+			return COMMAND_ERROR_USAGE;
+
+		timeout = simple_strtol(argv[2], NULL, 10);
 		if (timeout < 60) {
 			printf("Minimum WDT Timeout is 60 seconds\n");
 			return 1;
@@ -580,19 +676,19 @@ int do_rdu_pic_set_wdt (int argc, char *argv[])
 		}
 	}
 
-	/* printf("do_rdu_pic_set_wdt function called.\n");
+	/* printf("do_pic_set_wdt function called.\n");
 	printf("Enable set to %d\n",enable);
 	printf("Timeout set to %d seconds\n",timeout); */
 
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
 	// first two bytes are taken care of by pic_send_mesg
 	data[0] = enable;
 	data[1] = timeout & 0xFF;
 	data[2] = timeout >> 8;
 
-	rdu_pic_send_msg(data, CMD_SW_WDT, 3);
-    len = rdu_pic_recv_msg(data);
+	pic_send_msg(data, CMD_SW_WDT, 3);
+	len = pic_recv_msg(data);
 
 	if (len <= 0) {
 		printf("Error setting Watchdog Timer\n");
@@ -601,7 +697,7 @@ int do_rdu_pic_set_wdt (int argc, char *argv[])
 	return 0;
 }
 
-BAREBOX_CMD_HELP_START(rdu_setwdt)
+BAREBOX_CMD_HELP_START(pic_setwdt)
 	BAREBOX_CMD_HELP_TEXT("Set the Watchdog Timer (WDT) on the Microchip PIC")
 	BAREBOX_CMD_HELP_TEXT("")
 	BAREBOX_CMD_HELP_TEXT("1 60  Enable Watchdog with Timeout value of 60 seconds; lowest value")
@@ -612,16 +708,16 @@ BAREBOX_CMD_HELP_START(rdu_setwdt)
 	BAREBOX_CMD_HELP_OPT ("[timeout]", "Timeout Value in second, range 60-300")
 BAREBOX_CMD_HELP_END
 
-BAREBOX_CMD_START(rdu_setwdt)
-	.cmd		= do_rdu_pic_set_wdt,
+BAREBOX_CMD_START(pic_setwdt)
+	.cmd		= do_pic_set_wdt,
 	BAREBOX_CMD_DESC("Set the Watchdog Timer (WDT) on the Microchip PIC")
 	BAREBOX_CMD_OPTS("[mode] [timeout]")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
-	BAREBOX_CMD_HELP(cmd_rdu_setwdt_help)
+	BAREBOX_CMD_HELP(cmd_pic_setwdt_help)
 BAREBOX_CMD_END
 
-BAREBOX_CMD_START(rdu_petwdt)
-	.cmd		= do_rdu_pic_pet_wdt,
+BAREBOX_CMD_START(pic_petwdt)
+	.cmd		= do_pic_pet_wdt,
 	BAREBOX_CMD_DESC("Pet the Watchdog Timer (WDT) on the Microchip PIC")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
@@ -636,7 +732,7 @@ BAREBOX_CMD_END
  * Overview:        Prints out the current boot device
  *
  *******************************************************************/
-int do_rdu_pic_get_boot_device (int argc, char *argv[])
+int do_pic_get_boot_device (int argc, char *argv[])
 {
 	unsigned char data[64];
 	int len;
@@ -656,19 +752,19 @@ int do_rdu_pic_get_boot_device (int argc, char *argv[])
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	/* printf("do_rdu_pic_get_boot_device function called.\n"); */
+	/* printf("do_pic_get_boot_device function called.\n"); */
 
-	rdu_pic_reset_comms();
+	pic_reset_comms();
 
 	data[0] = 0x01; //read flag
 	data[1] = 0x04; //EEPROM Page Number LSB
 	data[2] = 0x00; //EEPROM Page Number MSB
 
 	//send out the message to read page 4
-	rdu_pic_send_msg(data, CMD_RDU_EEPROM, 3);
+	pic_send_msg(data, CMD_PIC_EEPROM, 3);
 
 	//read page 4 so we can change byte 0x03
-	len = rdu_pic_recv_msg(data);
+	len = pic_recv_msg(data);
 
 	if (len <= 0)
 		printf("Error getting RDU Boot Device\n");
@@ -688,9 +784,9 @@ int do_rdu_pic_get_boot_device (int argc, char *argv[])
 	return 0;
 }
 
-BAREBOX_CMD_START(rdu_getboot)
-	.cmd		= do_rdu_pic_get_boot_device,
-	BAREBOX_CMD_DESC("Get the RDU Boot device from the Microchip PIC")
+BAREBOX_CMD_START(pic_getboot)
+	.cmd		= do_pic_get_boot_device,
+	BAREBOX_CMD_DESC("Get the Boot device from the Microchip PIC")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
@@ -706,7 +802,7 @@ BAREBOX_CMD_END
  *                  SD (external flash card) or EMMC (on-board flash)
  *
  *******************************************************************/
-int do_rdu_pic_set_boot_device (int argc, char *argv[]) {
+int do_pic_set_boot_device (int argc, char *argv[]) {
 	unsigned char data[64];
 	int len;
 	uint8_t tempData[32] = {0};
@@ -729,11 +825,14 @@ int do_rdu_pic_set_boot_device (int argc, char *argv[]) {
 	if (argc != 2)
 		return COMMAND_ERROR_USAGE;
 
-	/* printf("do_rdu_pic_set_boot_device function called.\n"); */
-
-	rdu_pic_reset_comms();
-
 	theDevice = simple_strtol(argv[1], NULL, 10);
+	if ((theDevice < 0) ||
+		(theDevice > 2))
+		return -EINVAL;
+
+	/* printf("do_pic_set_boot_device function called.\n"); */
+
+	pic_reset_comms();
 
 	data[0] = 0x01; //read flag
 	data[1] = 0x04; //EEPROM Page Number LSB
@@ -741,11 +840,11 @@ int do_rdu_pic_set_boot_device (int argc, char *argv[]) {
 
 	//send out the message to read page 4
 	/* sendBytes((unsigned char*)&PacketToDevice, 5, NORMAL_MSG); */
-	rdu_pic_send_msg(data, CMD_RDU_EEPROM, 3);
+	pic_send_msg(data, CMD_PIC_EEPROM, 3);
 
 	//read page 4 so we can change byte 0x03
 	/* receiveBytes((unsigned char*)&PacketFromDevice, 1, NORMAL_MSG); */
-	len = rdu_pic_recv_msg(data);
+	len = pic_recv_msg(data);
 
 	if(data[3] != 1)
 		return -1;
@@ -767,10 +866,10 @@ int do_rdu_pic_set_boot_device (int argc, char *argv[]) {
 
 	//send out the message to read page 4
 	/* sendBytes((unsigned char*)&PacketToDevice, 37, NORMAL_MSG); */
-	rdu_pic_send_msg(data, CMD_RDU_EEPROM, 35);
+	pic_send_msg(data, CMD_PIC_EEPROM, 35);
 
 	//read page 4 so we can change byte 0x03
-	len = rdu_pic_recv_msg(data);
+	len = pic_recv_msg(data);
 	if (len <= 0) {
 		printf("Error setting RDU Boot Device\n");
 	}
@@ -778,23 +877,23 @@ int do_rdu_pic_set_boot_device (int argc, char *argv[]) {
 	return 0;
 }
 
-BAREBOX_CMD_HELP_START(rdu_setboot)
-	BAREBOX_CMD_HELP_TEXT("Set the RDU Boot device from the Microchip PIC")
+BAREBOX_CMD_HELP_START(pic_setboot)
+	BAREBOX_CMD_HELP_TEXT("Set the Boot device from the Microchip PIC")
 	BAREBOX_CMD_HELP_TEXT("")
 	BAREBOX_CMD_HELP_TEXT("Options:")
 	BAREBOX_CMD_HELP_OPT ("[dev]", "0 = SD, 1 = eMMC, 2 = NOR")
 BAREBOX_CMD_HELP_END
 
-BAREBOX_CMD_START(rdu_setboot)
-	.cmd		= do_rdu_pic_set_boot_device,
-	BAREBOX_CMD_DESC("Set the RDU Boot device from the Microchip PIC")
+BAREBOX_CMD_START(pic_setboot)
+	.cmd		= do_pic_set_boot_device,
+	BAREBOX_CMD_DESC("Set the Boot device from the Microchip PIC")
 	BAREBOX_CMD_OPTS("[dev]")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
-	BAREBOX_CMD_HELP(cmd_rdu_setboot_help)
+	BAREBOX_CMD_HELP(cmd_pic_setboot_help)
 BAREBOX_CMD_END
 
 /********************************************************************
- * Function:        int set_rdu_boot_progress(uint16_t progress)
+ * Function:        int set_pic_boot_progress(uint16_t progress)
  *
  * Input:           uint16_t progress: progress number
  *
@@ -804,9 +903,9 @@ BAREBOX_CMD_END
  * 					current boot progress state
  *
  *******************************************************************/
-int set_rdu_boot_progress(uint16_t progress) {
-	uint8_t data[32] 	= {0};
-	int len				= 0;
+int pic_set_boot_progress(uint16_t progress) {
+	uint8_t data[32] = {0};
+	int len = 0;
 
 	// first byte is LSB
 	// second byte is MSB
@@ -814,10 +913,10 @@ int set_rdu_boot_progress(uint16_t progress) {
 	data[1] = (progress >> 8) & 0x00FF;
 
 	//send out the message
-	rdu_pic_send_msg(data, CMD_UPDATE_BOOT_PROGRESS_CODE, 2);
+	pic_send_msg(data, CMD_UPDATE_BOOT_PROGRESS_CODE, 2);
 
 	// Reveive the response
-	len = rdu_pic_recv_msg(data);
+	len = pic_recv_msg(data);
 	if(len <= 0) {
 		// error setting boot progress
 		return 1;
@@ -829,7 +928,7 @@ int set_rdu_boot_progress(uint16_t progress) {
 
 
 /********************************************************************
- * Function:        int rdu_pic_incrementNumFailedBoots(void)
+ * Function:        int pic_incrementNumFailedBoots(void)
  *
  * Input:           None
  *
@@ -838,7 +937,7 @@ int set_rdu_boot_progress(uint16_t progress) {
  * Overview:        Increments the number failed boots
  *
  *******************************************************************/
-int rdu_pic_incrementNumFailedBoots(void)
+int pic_incrementNumFailedBoots(void)
 {
     unsigned char data[64]  = {0};
     uint8_t numBoots        = 0;
@@ -862,7 +961,7 @@ int rdu_pic_incrementNumFailedBoots(void)
 
     // Read out Page 5 of the RDU EEPROM
     // It contains the UINT16 for number of boot failures
-    if(rdu_pic_GetRduEepromData(5, data) != 0) {
+    if(pic_GetRduEepromData(5, data) != 0) {
         // Error, was unable to read data from the RDU EEPROM
         return 1;
     }
@@ -891,13 +990,13 @@ int rdu_pic_incrementNumFailedBoots(void)
     // Split the UINT16 back into bytes to be written to the EEPROM
     data[4] = numBoots;
 
-    return rdu_pic_SendRduEepromData(5, data);
+    return pic_SendRduEepromData(5, data);
 }
 
 
 
 /********************************************************************
- * Function:        int do_rdu_pic_getNumFailedBoots(uint8_t *boots)
+ * Function:        int pic_getNumFailedBoots(uint8_t *boots)
  *
  * Input:           uint8_t*: variable to return number of failed boots
  *
@@ -906,7 +1005,7 @@ int rdu_pic_incrementNumFailedBoots(void)
  * Overview:        Returns the number of failed boots
  *
  *******************************************************************/
-int rdu_pic_getNumFailedBoots(uint8_t *boots) {
+int pic_getNumFailedBoots(uint8_t *boots) {
 	unsigned char data[64]  = {0};
 /*
 	// Check the platform to see if a PIC is attached
@@ -921,7 +1020,7 @@ int rdu_pic_getNumFailedBoots(uint8_t *boots) {
 */
 	// Read out Page 5 of the RDU EEPROM
 	// It contains the UINT16 for number of boot failures
-	if(rdu_pic_GetRduEepromData(5, data) != 0) {
+	if(pic_GetRduEepromData(5, data) != 0) {
 		// Error, was unable to read data from the RDU EEPROM
 		printf("[ERROR] Unable to read from the RDU EEPROM\n");
 		return 1;
@@ -941,7 +1040,7 @@ int rdu_pic_getNumFailedBoots(uint8_t *boots) {
 
 
 /********************************************************************
- * Function:        int do_rdu_pic_getNumFailedBoots(int argc, char *argv[])
+ * Function:        int pic_getNumFailedBoots(int argc, char *argv[])
  *
  * Input:           Command line arguments
  *
@@ -950,12 +1049,12 @@ int rdu_pic_getNumFailedBoots(uint8_t *boots) {
  * Overview:        Prints out the number failed boots
  *
  *******************************************************************/
-int do_rdu_pic_getNumFailedBoots(int argc, char *argv[])
+int do_pic_getNumFailedBoots(int argc, char *argv[])
 {
 	int retVal        = 0;
 	uint8_t numBoots  = 0;
 
-	retVal = rdu_pic_getNumFailedBoots(&numBoots);
+	retVal = pic_getNumFailedBoots(&numBoots);
 	if(retVal == 0) {
 		printf("Number of failed boot attempts due to eMMC errors: %d\n", numBoots);
 	}
@@ -963,8 +1062,8 @@ int do_rdu_pic_getNumFailedBoots(int argc, char *argv[])
 	return 0;
 }
 
-BAREBOX_CMD_START(rdu_getNumFailedBoots)
-	.cmd		= do_rdu_pic_getNumFailedBoots,
+BAREBOX_CMD_START(pic_getNumFailedBoots)
+	.cmd		= do_pic_getNumFailedBoots,
 	BAREBOX_CMD_DESC("Get the number of failed boot attempts due to eMMC errors")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END

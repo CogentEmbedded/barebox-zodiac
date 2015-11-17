@@ -8,8 +8,8 @@
 // Copyright law.
 //*****************************************************************************
 
-#ifndef CMD_RDU_PIC_H_
-#define CMD_RDU_PIC_H_
+#ifndef CMD_PIC_H_
+#define CMD_PIC_H_
 
 
 #define SOH 0x01
@@ -33,7 +33,7 @@ enum MessageId {
     CMD_SW_WDT           = 0xA1,
     CMD_PET_WDT          = 0xA2,
     CMD_DDS_EEPROM       = 0xA3,
-    CMD_RDU_EEPROM       = 0xA4,
+    CMD_PIC_EEPROM       = 0xA4,
     CMD_RS_485           = 0xA5,
     CMD_LCD_BACKLIGHT    = 0xA6,
     CMD_PIC_RESET        = 0xA7,
@@ -51,12 +51,13 @@ enum MessageId {
     CMD_SUCCESSFUL_BOOT  = 0xB3,
     CMD_TIMING_TEST		 = 0xB4,
     CMD_UPDATE_BOOT_PROGRESS_CODE = 0xB5,
+    CMD_LCD_BOOT_ENABLE	 = 0xBE,
 
     RSP_STATUS           = 0xC0,
     RSP_SW_WDT           = 0xC1,
     RSP_PET_WDT          = 0xC2,
     RSP_DDS_EEPROM       = 0xC3,
-    RSP_RDU_EEPROM       = 0xC4,
+    RSP_PIC_EEPROM       = 0xC4,
     RSP_RS_485           = 0xC5,
     RSP_LCD_BACKLIGHT    = 0xC6,
     RSP_PIC_RESET        = 0xC7,
@@ -74,6 +75,7 @@ enum MessageId {
     RSP_SUCCESSFUL_BOOT  = 0xD3,
     RSP_TIMING_TEST      = 0xD4,
     RSP_UPDATE_BOOT_PROGRESS_CODE = 0xD5,
+    RSP_LCD_BOOT_ENABLE = 0xDE,
 
     CMD_EVNT_BUTTON_PRESS = 0xE0,
     RSP_EVNT_BUTTON_PRESS = 0xE1,
@@ -94,95 +96,95 @@ enum bootProgress {
 	BOOT_PROGRESS_UBOOT_JUMP_TO_KERNEL 	= 0x0004
 };
 
-#define RDU_PAGE_SIZE                   32
+#define PIC_PAGE_SIZE                   32
 
-#define RDU_EEPROM_LAST_READABLE_PAGE   6
-#define RDU_EEPROM_LAST_PAGE            511
+#define PIC_EEPROM_LAST_READABLE_PAGE   6
+#define PIC_EEPROM_LAST_PAGE            511
 
-#define RDU_EEPROM_CRC_PAGE__FIRST      0
-#define RDU_EEPROM_CRC_PAGE__LAST       3
+#define PIC_EEPROM_CRC_PAGE__FIRST      0
+#define PIC_EEPROM_CRC_PAGE__LAST       3
 
-#define RDU_EEPROM_MX51_EEPROM_BACKUP_START    20
-#define RDU_EEPROM_MX51_EEPROM_BACKUP_END      23
+#define PIC_EEPROM_MX51_EEPROM_BACKUP_START    20
+#define PIC_EEPROM_MX51_EEPROM_BACKUP_END      23
 
-#define RDU_EEPROM_MX51_SPINOR_BACKUP_START    128
-#define RDU_EEPROM_MX51_SPINOR_BACKUP_END      160
+#define PIC_EEPROM_MX51_SPINOR_BACKUP_START    128
+#define PIC_EEPROM_MX51_SPINOR_BACKUP_END      160
 
-#define RDU_MFG_DATE_PAGE               0
-#define RDU_MFG_DATE_LEN_OFFSET         16
-#define RDU_MFG_DATE_OFFSET             17
-#define RDU_MFG_DATE_MAX_LEN            8
+#define PIC_MFG_DATE_PAGE               0
+#define PIC_MFG_DATE_LEN_OFFSET         16
+#define PIC_MFG_DATE_OFFSET             17
+#define PIC_MFG_DATE_MAX_LEN            8
 
-#define RDU_PART_NUM_PAGE               1
-#define RDU_PART_NUM_LEN_OFFSET         0
-#define RDU_PART_NUM_OFFSET             1
-#define RDU_PART_NUM_MAX_LEN            15
+#define PIC_PART_NUM_PAGE               1
+#define PIC_PART_NUM_LEN_OFFSET         0
+#define PIC_PART_NUM_OFFSET             1
+#define PIC_PART_NUM_MAX_LEN            15
 
-#define RDU_SERIAL_NUM_PAGE             3
-#define RDU_SERIAL_NUM_LEN_OFFSET       0
-#define RDU_SERIAL_NUM_OFFSET           1
-#define RDU_SERIAL_NUM_MAX_LEN          15
+#define PIC_SERIAL_NUM_PAGE             3
+#define PIC_SERIAL_NUM_LEN_OFFSET       0
+#define PIC_SERIAL_NUM_OFFSET           1
+#define PIC_SERIAL_NUM_MAX_LEN          15
 
-#define RDU_VOLTAGE_STAT_PAGE           5
-#define RDU_VOLTAGE_STAT_OFFSET         0
-#define RDU_VOLTAGE_STATE_SIZE          1
+#define PIC_VOLTAGE_STAT_PAGE           5
+#define PIC_VOLTAGE_STAT_OFFSET         0
+#define PIC_VOLTAGE_STATE_SIZE          1
 #define VOLTAGE_3_3_MASK                0x01
 #define VOLTAGE_5_MASK                  0x02
 #define VOLTAGE_12_MASK                 0x04
 #define VOLTAGE_28_MASK                 0x08
 
-#define RDU_SW_RST_REASON_PAGE          5
-#define RDU_SW_RST_REASON_OFFSET        1
-#define RDU_SW_RST_REASON_SIZE          1
+#define PIC_SW_RST_REASON_PAGE          5
+#define PIC_SW_RST_REASON_OFFSET        1
+#define PIC_SW_RST_REASON_SIZE          1
 
-#define RDU_BOOT_SRC_PAGE               4
-#define RDU_BOOT_SRC_OFFSET             3
-#define RDU_BOOT_SRC_SIZE               1
+#define PIC_BOOT_SRC_PAGE               4
+#define PIC_BOOT_SRC_OFFSET             3
+#define PIC_BOOT_SRC_SIZE               1
 
-#define RDU_LIMIT_WD_RST_TIME_PAGE      4
-#define RDU_LIMIT_WD_RST_TIME_OFFSET    4
-#define RDU_LIMIT_WD_RST_TIME_SIZE      2
+#define PIC_LIMIT_WD_RST_TIME_PAGE      4
+#define PIC_LIMIT_WD_RST_TIME_OFFSET    4
+#define PIC_LIMIT_WD_RST_TIME_SIZE      2
 
-#define RDU_DEFAULT_PWR_LED_PAGE        4
-#define RDU_DEFAULT_PWR_LED_OFFSET      6
-#define RDU_DEFUALT_PWR_LED_SIZE        1
+#define PIC_DEFAULT_PWR_LED_PAGE        4
+#define PIC_DEFAULT_PWR_LED_OFFSET      6
+#define PIC_DEFUALT_PWR_LED_SIZE        1
 
-#define RDU_DEFAULT_RING_LED_PAGE       4
-#define RDU_DEFAULT_RING_LED_OFFSET     7
-#define RDU_DEFUALT_RING_LED_SIZE       1
+#define PIC_DEFAULT_RING_LED_PAGE       4
+#define PIC_DEFAULT_RING_LED_OFFSET     7
+#define PIC_DEFUALT_RING_LED_SIZE       1
 
-#define RDU_MX51_NEVER_BOOTED_PAGE      4
-#define RDU_MX51_NEVER_BOOTED_OFFSET    11
-#define RDU_MX51_NEVER_BOOTED_SIZE      1
+#define PIC_MX51_NEVER_BOOTED_PAGE      4
+#define PIC_MX51_NEVER_BOOTED_OFFSET    11
+#define PIC_MX51_NEVER_BOOTED_SIZE      1
 
-#define RDU_MAX_LCD_BRIGHT_PAGE         4
-#define RDU_MAX_LCD_BRIGHT_OFFSET       9
-#define RDU_MAX_LCD_BRIGHT_SIZE         1
+#define PIC_MAX_LCD_BRIGHT_PAGE         4
+#define PIC_MAX_LCD_BRIGHT_OFFSET       9
+#define PIC_MAX_LCD_BRIGHT_SIZE         1
 
-#define RDU_MIN_LCD_BRIGHT_PAGE         4
-#define RDU_MIN_LCD_BRIGHT_OFFSET       8
-#define RDU_MIN_LCD_BRIGHT_SIZE         1
+#define PIC_MIN_LCD_BRIGHT_PAGE         4
+#define PIC_MIN_LCD_BRIGHT_OFFSET       8
+#define PIC_MIN_LCD_BRIGHT_SIZE         1
 
-#define RDU_INIT_WD_TO_PAGE             4
-#define RDU_INIT_WD_TO_OFFSET           1
-#define RDU_INIT_WD_TO_SIZE             2
+#define PIC_INIT_WD_TO_PAGE             4
+#define PIC_INIT_WD_TO_OFFSET           1
+#define PIC_INIT_WD_TO_SIZE             2
 
-#define RDU_LCD_BL_PWM_FREQ_PAGE        4
-#define RDU_LCD_BL_PWM_FREQ_OFFSET      12
-#define RDU_LCD_BL_PWM_FREQ_SIZE        2
+#define PIC_LCD_BL_PWM_FREQ_PAGE        4
+#define PIC_LCD_BL_PWM_FREQ_OFFSET      12
+#define PIC_LCD_BL_PWM_FREQ_SIZE        2
 
-#define RDU_MAX_FAILED_BOOTS_PAGE       4
-#define RDU_MAX_FAILED_BOOTS_OFFSET     14
-#define RDU_MAX_FAILED_BOOTS_SIZE       2
+#define PIC_MAX_FAILED_BOOTS_PAGE       4
+#define PIC_MAX_FAILED_BOOTS_OFFSET     14
+#define PIC_MAX_FAILED_BOOTS_SIZE       2
 
-#define RDU_CUR_FAILED_BOOTS_PAGE       4
-#define RDU_CUR_FAILED_BOOTS_OFFSET     16
-#define RDU_CUR_FAILED_BOOTS_SIZE       2
+#define PIC_CUR_FAILED_BOOTS_PAGE       4
+#define PIC_CUR_FAILED_BOOTS_OFFSET     16
+#define PIC_CUR_FAILED_BOOTS_SIZE       2
 
-#define RDU_BOOT_STATE_PAGE             4
-#define RDU_BOOT_STATE_OFFSET           18
-#define RDU_BOOT_STATE_SIZE             2
+#define PIC_BOOT_STATE_PAGE             4
+#define PIC_BOOT_STATE_OFFSET           18
+#define PIC_BOOT_STATE_SIZE             2
 
 #define SPI_NOR_SHADOW_SIZE_BYTES       1024
 
-#endif /* CMD_RDU_PIC_H_ */
+#endif /* CMD_PIC_H_ */

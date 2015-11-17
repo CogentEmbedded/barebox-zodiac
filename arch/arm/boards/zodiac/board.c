@@ -182,7 +182,7 @@ static int imx51_zodiac_init(void)
 }
 coredevice_initcall(imx51_zodiac_init);
 
-extern void rdu_pic_uart_init(struct console_device *cdev, int speed);
+extern void pic_uart_init(struct console_device *cdev, int speed);
 
 static int imx51_zodiac_lateinit(void)
 {
@@ -191,7 +191,7 @@ static int imx51_zodiac_lateinit(void)
 		if (!(strcmp(cdev->devname, "serial2"))) {
 			printf("Init PIC on %s\n", cdev->devname);
 
-			rdu_pic_uart_init(cdev, 38400);
+			pic_uart_init(cdev, 38400);
 		}
 	}
 
