@@ -493,7 +493,8 @@
 		pinctrl-0 = <&pinctrl_ampgpio>;
 
 		/*Vdd-supply = <&vmmc2>;*/
-		/*power-gpio = <&gpio1 9 GPIO_ACTIVE_HIGH>;*/
+		external-pd;
+		power-gpio = <&gpio1 9 GPIO_ACTIVE_HIGH>;
 	};
 
 	rtc@68 {
@@ -781,6 +782,14 @@
 			fsl,pins = <
 				MX51_PAD_NANDF_D14__GPIO3_26		MX51_NVCC_NANDF_B_PAD_CTRL
 				MX51_PAD_NANDF_D15__GPIO3_25		MX51_NVCC_NANDF_B_PAD_CTRL
+			>;
+		};
+
+		/* amp power down gpio */
+		pinctrl_ampgpio: ampgpiogrp {
+			fsl,pins = <
+				/* HP_AMP_SHUTDOWN_B */
+				MX51_PAD_GPIO1_9__GPIO1_9		0x5e /*(MX51_GPIO_PAD_CTRL | PAD_CTL_ODE)*/
 			>;
 		};
 
