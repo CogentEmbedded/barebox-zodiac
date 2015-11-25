@@ -103,29 +103,34 @@
 		};
 	};
 
-	display0: display@di1 {
+	display0: display@di0 {
 		compatible = "fsl,imx-parallel-display";
 		interface-pix-fmt = "rgb24";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu_disp1>;
+
 		display-timings {
-			native-mode = <&timing0>;
-			timing0: dvi {
+			native-mode = <&toshiba>;
+			toshiba: toshiba89 {
 				clock-frequency = <65000000>;
-				hactive = <1024>;
+				hactive = <1280>;
 				vactive = <768>;
 				hback-porch = <192>;
+				hsync-len = <128>;
 				hfront-porch = <64>;
 				vback-porch = <20>;
-				vfront-porch = <3>;
-				hsync-len = <128>;
 				vsync-len = <7>;
+				vfront-porch = <3>;
+				pixelclk-active = <1>;
+				hsync-active = <1>;
+				vsync-active = <1>;
+				de-active = <0>;
 			};
 		};
 
 		port {
-			display1_in: endpoint {
-				remote-endpoint = <&ipu_di1_disp1>;
+			display0_in: endpoint {
+				remote-endpoint = <&ipu_di0_disp0>;
 			};
 		};
 	};
@@ -497,8 +502,8 @@
 	};
 };
 
-&ipu_di1_disp1 {
-	remote-endpoint = <&display1_in>;
+&ipu_di0_disp0 {
+	remote-endpoint = <&display0_in>;
 };
 
 &ssi2 {
@@ -846,5 +851,15 @@
 				MX51_PAD_OWIRE_LINE__GPIO1_24		NO_PAD_CTRL
 			>;
 		};
+	};
+};
+
+&gpio3 {
+	gpio1_3 {
+		gpio-hog;
+		export;
+		gpios = <3 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "lvds_pwr_dwn_b";
 	};
 };
