@@ -250,21 +250,21 @@
 		#size-cells = <0>;
 		compatible = "simple-bus";
 
-		usbh1phy: usbh1phy {
+		usbh1phy: usbphy@1 {
 			compatible = "usb-nop-xceiv";
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usbh1phy>;
-			reg = <0>;
+			reg = <1>;
 			clocks = <&clk_26M_usb>;
 			clock-names = "main_clk";
 			reset-gpios = <&gpio4 8 GPIO_ACTIVE_LOW>;
 		};
 
-		usbh2phy: usbh2phy {
+		usbh2phy: usbphy@2 {
 			compatible = "usb-nop-xceiv";
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usbh2phy>;
-			reg = <1>;
+			reg = <2>;
 			clocks = <&clk_26M_usb>;
 			clock-names = "main_clk";
 			reset-gpios = <&gpio4 7 GPIO_ACTIVE_LOW>;
@@ -533,6 +533,7 @@
 	pinctrl-0 = <&pinctrl_usbh1>;
 	fsl,usbphy = <&usbh1phy>;
 	phy_type = "ulpi";
+	disable-over-current;
 	status = "okay";
 };
 
@@ -541,6 +542,14 @@
 	pinctrl-0 = <&pinctrl_usbh2>;
 	fsl,usbphy = <&usbh2phy>;
 	phy_type = "ulpi";
+	disable-over-current;
+	status = "okay";
+};
+
+&usbotg {
+	dr_mode = "host";
+	disable-over-current;
+	phy_type = "utmi_wide";
 	status = "okay";
 };
 
@@ -629,7 +638,7 @@
 		/* done */
 		pinctrl_usbgate26mhz: usbgate26mhzgrp {
 			fsl,pins = <
-				MX51_PAD_DISP2_DAT6__GPIO1_19		NO_PAD_CTRL
+				MX51_PAD_DISP2_DAT6__GPIO1_19		MX51_GPIO_PAD_CTRL
 			>;
 		};
 
@@ -643,14 +652,14 @@
 		/* done */
 		pinctrl_usbh1phy: usbh1phygrp {
 			fsl,pins = <
-				MX51_PAD_NANDF_D0__GPIO4_8		MX51_NVCC_NANDF_C_PAD_CTRL
+				MX51_PAD_NANDF_D0__GPIO4_8		MX51_GPIO_PAD_CTRL
 			>;
 		};
 
 		/* done */
 		pinctrl_usbh2phy: usbh2phygrp {
 			fsl,pins = <
-				MX51_PAD_NANDF_D1__GPIO4_7		MX51_NVCC_NANDF_C_PAD_CTRL
+				MX51_PAD_NANDF_D1__GPIO4_7		MX51_GPIO_PAD_CTRL
 			>;
 		};
 
