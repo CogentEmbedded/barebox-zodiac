@@ -263,7 +263,10 @@
 				compatible = "fsl,imx51-usb", "fsl,imx27-usb";
 				reg = <0x73f80000 0x0200>;
 				interrupts = <18>;
-				clocks = <&clks IMX5_CLK_USBOH3_GATE>;
+				clocks = <&clks IMX5_CLK_USBOH3_GATE>,
+					 <&clks IMX5_CLK_USBOH3_PER_GATE>,
+					 <&clks IMX5_CLK_USB_PHY_GATE>;
+				clock-names = "ahb", "per", "ipg";
 				fsl,usbmisc = <&usbmisc 0>;
 				fsl,usbphy = <&usbphy0>;
 				status = "disabled";
@@ -273,7 +276,10 @@
 				compatible = "fsl,imx51-usb", "fsl,imx27-usb";
 				reg = <0x73f80200 0x0200>;
 				interrupts = <14>;
-				clocks = <&clks IMX5_CLK_USBOH3_GATE>;
+				clocks = <&clks IMX5_CLK_USBOH3_GATE>,
+					 <&clks IMX5_CLK_USBOH3_PER_GATE>,
+					 <&clks IMX5_CLK_USB_PHY1_GATE>;
+				clock-names = "ahb", "per", "ipg";
 				fsl,usbmisc = <&usbmisc 1>;
 				dr_mode = "host";
 				status = "disabled";
@@ -283,7 +289,10 @@
 				compatible = "fsl,imx51-usb", "fsl,imx27-usb";
 				reg = <0x73f80400 0x0200>;
 				interrupts = <16>;
-				clocks = <&clks IMX5_CLK_USBOH3_GATE>;
+				clocks = <&clks IMX5_CLK_USBOH3_GATE>,
+					 <&clks IMX5_CLK_USBOH3_PER_GATE>,
+					 <&clks IMX5_CLK_USB_PHY2_GATE>;
+				clock-names = "ahb", "per", "ipg";
 				fsl,usbmisc = <&usbmisc 2>;
 				dr_mode = "host";
 				status = "disabled";
