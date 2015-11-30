@@ -168,20 +168,22 @@
 		#size-cells = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpiospi0>;
-
-		gpio-sck = <&gpio4 15 GPIO_ACTIVE_HIGH>;
-		gpio-mosi = <&gpio4 19 GPIO_ACTIVE_HIGH>;
-		gpio-miso = <&gpio4 18 GPIO_ACTIVE_HIGH>;
-		num-chipselects = <1>;
-		cs-gpios = <
-			&gpio4 14 GPIO_ACTIVE_LOW
-		>;
 		status = "okay";
 
-		spi@0 {
-			compatible = "spidev";
+		gpio-sck = <&gpio4 15 GPIO_ACTIVE_HIGH>;
+		gpio-mosi = <&gpio4 12 GPIO_ACTIVE_HIGH>;
+		gpio-miso = <&gpio4 11 GPIO_ACTIVE_HIGH>;
+		num-chipselects = <1>;
+		cs-gpios = <
+			&gpio4 14 GPIO_ACTIVE_HIGH
+		>;
+
+		eeprom@0 {
+			compatible = "eeprom-93xx46";
 			reg = <0>;
-			spi-max-frequency = <57600000>;
+			spi-max-frequency = <1000000>;
+			spi-cs-high;
+			data-size = <8>;
 		};
 	};
 
