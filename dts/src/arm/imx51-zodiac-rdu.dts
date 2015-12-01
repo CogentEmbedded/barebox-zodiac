@@ -503,6 +503,31 @@
 		compatible = "maxim,ds1341";
 		reg = <0x68>;
 	};
+
+	rmi-i2c-dev@20 {
+		compatible = "syna,rmi-i2c";
+		reg = <0x20>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ts>;
+
+		interrupt-parent = <&gpio3>;
+		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
+
+		rmi-f01@1 {
+			reg = <0x1>;
+			syna,nosleep-mode = <1>;
+		};
+
+                rmi-f11@11 {
+                        reg = <0x11>;
+                        syna,flip-y;
+			syna,swap-axes;
+                        syna,sensor-type = <1>;
+                };
+        };
+
 };
 
 &ipu_di0_disp0 {
@@ -844,6 +869,13 @@
 			>;
 		};
 
+		pinctrl_ts: tsgrp {
+			fsl,pins = <
+				MX51_PAD_CSI1_D8__GPIO3_12		(PAD_CTL_DSE_HIGH | PAD_CTL_SRE_SLOW )
+				MX51_PAD_CSI1_D9__GPIO3_13		NO_PAD_CTRL
+			>;
+		};
+
 		/* gpio, tie to? check */
 		pinctrl_hog: hoggrp {
 			fsl,pins = <
@@ -881,5 +913,11 @@
 		gpios = <3 GPIO_ACTIVE_HIGH>;
 		output-high;
 		line-name = "lvds_pwr_dwn_b";
+	};
+
+	gpio3_13 {
+		gpio-hog;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		output-high;
 	};
 };
