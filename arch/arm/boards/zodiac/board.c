@@ -185,7 +185,9 @@ static int imx51_zodiac_init(void)
 }
 coredevice_initcall(imx51_zodiac_init);
 
+#ifdef CONFIG_CMD_ZODIAC_PIC
 extern void pic_uart_init(struct console_device *cdev, int speed);
+
 
 static int imx51_zodiac_lateinit(void)
 {
@@ -201,6 +203,7 @@ static int imx51_zodiac_lateinit(void)
 	return 0;
 }
 postenvironment_initcall(imx51_zodiac_lateinit);
+#endif
 
 #ifdef CONFIG_ARCH_IMX_XLOAD
 
