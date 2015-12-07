@@ -22,4 +22,10 @@ config SENSORS_LM75
 
 		- National Semiconductor LM75, LM75A
 
+config SENSORS_IMX_THERMAL
+       tristate "Temperature sensor driver for Freescale i.MX SoCs"
+       help
+         Support for Temperature Monitor (TEMPMON) found on Freescale
+         i.MX SoCs.
+
 endif # HWMON
