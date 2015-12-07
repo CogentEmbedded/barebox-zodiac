@@ -381,8 +381,6 @@ unsigned int pci_scan_bus(struct pci_bus *bus)
 				pci_register_device(dev);
 			break;
 		case PCI_HEADER_TYPE_BRIDGE:
-			setup_device(dev, 2);
-
 			child_bus = pci_alloc_bus();
 			/* inherit parent properties */
 			child_bus->host = bus->host;
@@ -408,6 +406,8 @@ unsigned int pci_scan_bus(struct pci_bus *bus)
 			prescan_setup_bridge(dev);
 			pci_scan_bus(child_bus);
 			postscan_setup_bridge(dev);
+
+			setup_device(dev, 2);
 
 			/* finally active all devices behind the bridge */
 			list_for_each_entry(dev, &child_bus->devices, bus_list)
