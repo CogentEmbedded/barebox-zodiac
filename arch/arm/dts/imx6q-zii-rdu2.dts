@@ -279,6 +279,10 @@
 	status = "okay";
 };
 
+&tempmon {
+	barebox,sensor-name = "TEMPMON";
+};
+
 &i2c2 {
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
