@@ -672,60 +672,70 @@
 	};
 	gpio1_12 {
 		gpio-hog;
+		export;
 		gpios = <12 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_s_4";
 	};
 	gpio1_13 {
 		gpio-hog;
+		export;
 		gpios = <13 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_s_5";
 	};
 	gpio1_15 {
 		gpio-hog;
+		export;
 		gpios = <15 GPIO_ACTIVE_LOW>;
 		input;
 		line-name = "discrete_in_s_1";
 	};
 	gpio1_16 {
 		gpio-hog;
+		export;
 		gpios = <16 GPIO_ACTIVE_LOW>;
 		input;
 		line-name = "discrete_in_s_2";
 	};
 	gpio1_17 {
 		gpio-hog;
+		export;
 		gpios = <17 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "scu_disable_b";
 	};
 	gpio1_18 {
 		gpio-hog;
+		export;
 		gpios = <18 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "scu_active_out";
 	};
 	gpio1_25 {
 		gpio-hog;
+		export;
 		gpios = <25 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "primary_scu_b";
 	};
 	gpio1_26 {
 		gpio-hog;
+		export;
 		gpios = <26 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_s_1";
 	};
 	gpio1_27 {
 		gpio-hog;
+		export;
 		gpios = <27 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_s_2";
 	};
 	gpio1_28 {
 		gpio-hog;
+		export;
 		gpios = <28 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_s_3";
@@ -752,28 +762,24 @@
 &gpio4 {
 	gpio4_3 {
 		gpio-hog;
-		export;
 		gpios = <3 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "gpio4_3";
 	};
 	gpio4_4 {
 		gpio-hog;
-		export;
 		gpios = <4 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "gpio4_4";
 	};
 	gpio4_5 {
 		gpio-hog;
-		export;
 		gpios = <5 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "gpio4_5";
 	};
 	gpio4_6 {
 		gpio-hog;
-		export;
 		gpios = <6 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "gpio4_6";
@@ -781,7 +787,6 @@
 	/* gpio4_18 - FTDI reset */
 	gpio4_18 {
 		gpio-hog;
-		export;
 		gpios = <18 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "gpio4_18";
@@ -792,27 +797,18 @@
 		export;
 		gpios = <19 GPIO_ACTIVE_HIGH>;
 		output-low;
-		line-name = "gpio4_19";
+		line-name = "mmc2_reset";
 	};
 	gpio4_20 {
 		gpio-hog;
-		export;
 		gpios = <20 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "gpio4_20";
 	};
 	gpio4_21 {
 		gpio-hog;
-		export;
 		gpios = <21 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "gpio4_21";
-	};
-	gpio4_26 {
-		gpio-hog;
-		export;
-		gpios = <26 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "gpio4_26";
 	};
 };
