@@ -406,23 +406,17 @@
 		reg = <1>;
 
 		partition@0 {
-			label = "NOR-config";
-			reg = <0x0 0x00000400>;
-			read-only;
-		};
-
-		partition@400 {
-			label = "NOR-bootloader";
-			reg = <0x00000400 0x000FFC00>;
+			label = "bootloader";
+			reg = <0x0 0x00100000>;
 		};
 
 		partition@100000 {
-			label = "NOR-kernel";
+			label = "kernel";
 			reg = <0x00100000 0x00300000>;
 		};
 
 		partition@400000 {
-			label = "NOR-rootfs";
+			label = "rootfs";
 			reg = <0x00400000 0x00400000>;
 		};
 	};
