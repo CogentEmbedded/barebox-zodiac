@@ -170,16 +170,15 @@ static int imx51_zodiac_init(void)
 	} else if (of_machine_is_compatible("fsl,imx51-zodiac-rdu-b")) {
 		barebox_set_hostname("zodiac_rdu_b");
 		barebox_set_model("RDU Rev B");
-	} else {
-		return 0;
 	}
 
 	mc13xxx_register_init_callback(zodiac_power_init);
 
 	armlinux_set_architecture(MACH_TYPE_MX51_BABBAGE);
 
-	imx51_bbu_internal_mmc_register_handler("mmc", "/dev/mmc0",
-		BBU_HANDLER_FLAG_DEFAULT);
+	imx51_bbu_internal_mmc_register_handler("mmc", "/dev/mmc0", 0);
+	imx51_bbu_internal_spi_i2c_register_handler("spiflash",
+		"/dev/dataflash0", BBU_HANDLER_FLAG_DEFAULT);
 
 	return 0;
 }
