@@ -641,72 +641,84 @@
 	};
 	gpio1_11 {
 		gpio-hog;
+		export;
 		gpios = <11 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "discrete_in_z_1";
 	};
 	gpio1_12 {
 		gpio-hog;
+		export;
 		gpios = <12 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "discrete_in_z_2";
 	};
 	gpio1_13 {
 		gpio-hog;
+		export;
 		gpios = <13 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "discrete_in_z_3";
 	};
 	gpio1_14 {
 		gpio-hog;
+		export;
 		gpios = <14 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "discrete_in_z_4";
 	};
 	gpio1_15 {
 		gpio-hog;
+		export;
 		gpios = <15 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "discrete_in_z_5";
 	};
 	gpio1_16 {
 		gpio-hog;
+		export;
 		gpios = <16 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "discrete_in_z_6";
 	};
 	gpio1_17 {
 		gpio-hog;
+		export;
 		gpios = <17 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "scu_disable_b";
 	};
 	gpio1_18 {
 		gpio-hog;
+		export;
 		gpios = <18 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "scu_active_out";
 	};
 	gpio1_25 {
 		gpio-hog;
+		export;
 		gpios = <25 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "primary_scu_b";
 	};
 	gpio1_26 {
 		gpio-hog;
+		export;
 		gpios = <26 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_z_1";
 	};
 	gpio1_27 {
 		gpio-hog;
+		export;
 		gpios = <27 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_z_2";
 	};
 	gpio1_28 {
 		gpio-hog;
+		export;
 		gpios = <28 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_z_3";
@@ -769,12 +781,5 @@
 		gpios = <21 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "gpio4_21";
-	};
-	gpio4_26 {
-		gpio-hog;
-		export;
-		gpios = <26 GPIO_ACTIVE_HIGH>;
-		output-high;
-		line-name = "gpio4_26";
 	};
 };
