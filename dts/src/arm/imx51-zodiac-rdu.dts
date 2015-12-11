@@ -72,29 +72,21 @@
 	};
 
 	clocks {
-		clk_26M: codec_clock {
+		clk_26M: 26M_clock {
 			compatible = "fixed-clock";
-			reg=<0>;
 			#clock-cells = <0>;
 			clock-frequency = <26000000>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_clk26mhz>;
-			gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
 		};
 
 		clk_26M_usb: usbhost_clock {
 			compatible = "gpio-gate-clock";
-			reg=<0>;
 			#clock-cells = <0>;
 			clocks = <&clk_26M>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_usbgate26mhz>;
-			enable-gpios = <&gpio1 19 GPIO_ACTIVE_LOW>;
+			clock-output-names = "usb_host_26M";
 		};
 
 		clk_26M_snd: sndclock {
 			compatible = "gpio-gate-clock";
-			reg=<0>;
 			#clock-cells = <0>;
 			clocks = <&clk_26M>;
 			pinctrl-names = "default";
@@ -583,7 +575,7 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog>;
+	pinctrl-0 = <&pinctrl_hog &pinctrl_clk26mhz &pinctrl_usbgate26mhz>;
 
 	imx51-zodiac-rdu {
 		/* done */
@@ -897,17 +889,28 @@
 				MX51_PAD_CSI2_D12__GPIO4_9		MX51_PAD_CTRL_7
 				MX51_PAD_CSI2_VSYNC__GPIO4_13		NO_PAD_CTRL
 
-				MX51_PAD_CSI1_D8__GPIO3_12		(PAD_CTL_DSE_HIGH | PAD_CTL_SRE_SLOW )
-				MX51_PAD_CSI1_D9__GPIO3_13		NO_PAD_CTRL
-
 				MX51_PAD_OWIRE_LINE__GPIO1_24		NO_PAD_CTRL
 			>;
 		};
 	};
 };
 
+&gpio1 {
+	gpio1_19 {
+		gpio-hog;
+		gpios = <19 GPIO_ACTIVE_HIGH>;
+		output-low;
+	};
+};
+
 &gpio3 {
-	gpio1_3 {
+	gpio3_1 {
+		gpio-hog;
+		gpios = <1 GPIO_ACTIVE_HIGH>;
+		output-high;
+	};
+
+	gpio3_3 {
 		gpio-hog;
 		export;
 		gpios = <3 GPIO_ACTIVE_HIGH>;
