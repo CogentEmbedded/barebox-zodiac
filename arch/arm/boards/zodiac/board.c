@@ -178,8 +178,9 @@ static int imx51_zodiac_init(void)
 
 	armlinux_set_architecture(MACH_TYPE_MX51_BABBAGE);
 
-	imx51_bbu_internal_mmc_register_handler("mmc", "/dev/mmc0",
-		BBU_HANDLER_FLAG_DEFAULT);
+	imx51_bbu_internal_mmc_register_handler("mmc", "/dev/mmc0", 0);
+	imx51_bbu_internal_spi_i2c_register_handler("spiflash",
+		"/dev/dataflash0", BBU_HANDLER_FLAG_DEFAULT);
 
 	return 0;
 }
