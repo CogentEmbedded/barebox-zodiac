@@ -551,8 +551,9 @@
 &usbh1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbh1>;
-	fsl,usbphy = <&usbh1phy>;
+	dr_mode = "host";
 	phy_type = "ulpi";
+	fsl,usbphy = <&usbh1phy>;
 	disable-over-current;
 	status = "okay";
 };
@@ -560,8 +561,9 @@
 &usbh2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbh2>;
-	fsl,usbphy = <&usbh2phy>;
+	dr_mode = "host";
 	phy_type = "ulpi";
+	fsl,usbphy = <&usbh2phy>;
 	disable-over-current;
 	status = "okay";
 };
