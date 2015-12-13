@@ -29,9 +29,9 @@
 
 /* I/O wrapper functions */
 #define E1000_WRITE_REG(a, reg, value) \
-	writel((value), ((a)->hw_addr + E1000_##reg))
+	e1000_write_reg((a), E1000_##reg, (value))
 #define E1000_READ_REG(a, reg) \
-	readl((a)->hw_addr + E1000_##reg)
+	e1000_read_reg((a), E1000_##reg)
 #define E1000_WRITE_REG_ARRAY(a, reg, offset, value) \
 	writel((value), ((a)->hw_addr + E1000_##reg + ((offset) << 2)))
 #define E1000_READ_REG_ARRAY(a, reg, offset) \
@@ -2132,6 +2132,43 @@ int32_t e1000_read_eeprom(struct e1000_hw *hw, uint16_t offset,
 		uint16_t *data);
 
 int32_t e1000_swfw_sync_acquire(struct e1000_hw *hw, uint16_t mask);
+
+struct e1000_fixup_table {
+	uint32_t orig, fixed;
+};
+
+static inline uint32_t e1000_true_offset(struct e1000_hw *hw, uint32_t reg)
+{
+	if (hw->mac_type == e1000_igb) {
+		unsigned int i;
+
+		const struct e1000_fixup_table fixup_table[] = {
+			{ E1000_EEWR,     E1000_I210_EEWR     },
+			{ E1000_PHY_CTRL, E1000_I210_PHY_CTRL },
+		        { E1000_EEMNGCTL, E1000_I210_EEMNGCTL },
+		};
+
+		for (i = 0; i < ARRAY_SIZE(fixup_table); i++) {
+			if (fixup_table[i].orig == reg)
+				return fixup_table[i].fixed;
+		}
+	}
+
+	return reg;
+}
+
+static inline void e1000_write_reg(struct e1000_hw *hw, uint32_t reg, uint32_t value)
+{
+	reg = e1000_true_offset(hw, reg);
+	writel(value, hw->hw_addr + reg);
+}
+
+static inline uint32_t e1000_read_reg(struct e1000_hw *hw, uint32_t reg)
+{
+	reg = e1000_true_offset(hw, reg);
+	return readl(hw->hw_addr + reg);
+}
+
 
 
 #endif	/* _E1000_HW_H_ */

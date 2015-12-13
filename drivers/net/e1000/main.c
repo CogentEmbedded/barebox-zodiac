@@ -1185,14 +1185,11 @@ static int32_t e1000_set_d0_lplu_state_off(struct e1000_hw *hw)
 	if (hw->mac_type <= e1000_82547_rev_2)
 		return E1000_SUCCESS;
 
-	if (hw->mac_type == e1000_ich8lan) {
+	if (hw->mac_type == e1000_ich8lan ||
+	    hw->mac_type == e1000_igb) {
 		phy_ctrl = E1000_READ_REG(hw, PHY_CTRL);
 		phy_ctrl &= ~E1000_PHY_CTRL_D0A_LPLU;
 		E1000_WRITE_REG(hw, PHY_CTRL, phy_ctrl);
-	} else if (hw->mac_type == e1000_igb) {
-		phy_ctrl = E1000_READ_REG(hw, I210_PHY_CTRL);
-		phy_ctrl &= ~E1000_PHY_CTRL_D0A_LPLU;
-		E1000_WRITE_REG(hw, I210_PHY_CTRL, phy_ctrl);
 	} else {
 		ret_val = e1000_read_phy_reg(hw, IGP02E1000_PHY_POWER_MGMT,
 				&phy_data);
@@ -2746,13 +2743,9 @@ static int32_t e1000_get_phy_cfg_done(struct e1000_hw *hw)
 	case e1000_82572:
 	case e1000_igb:
 		while (timeout) {
-			if (hw->mac_type == e1000_igb) {
-				if (E1000_READ_REG(hw, I210_EEMNGCTL) & cfg_mask)
-					break;
-			} else {
-				if (E1000_READ_REG(hw, EEMNGCTL) & cfg_mask)
-					break;
-			}
+			if (E1000_READ_REG(hw, EEMNGCTL) & cfg_mask)
+				break;
+
 			mdelay(1);
 			timeout--;
 		}
