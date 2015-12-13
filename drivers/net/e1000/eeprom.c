@@ -290,7 +290,6 @@ int32_t e1000_init_eeprom_params(struct e1000_hw *hw)
 		eeprom->address_bits = 6;
 		eeprom->delay_usec = 50;
 		eeprom->use_eerd = false;
-		eeprom->use_eewr = false;
 	break;
 	case e1000_82540:
 	case e1000_82545:
@@ -308,7 +307,6 @@ int32_t e1000_init_eeprom_params(struct e1000_hw *hw)
 			eeprom->address_bits = 6;
 		}
 		eeprom->use_eerd = false;
-		eeprom->use_eewr = false;
 		break;
 	case e1000_82541:
 	case e1000_82541_rev_2:
@@ -338,7 +336,6 @@ int32_t e1000_init_eeprom_params(struct e1000_hw *hw)
 			}
 		}
 		eeprom->use_eerd = false;
-		eeprom->use_eewr = false;
 		break;
 	case e1000_82571:
 	case e1000_82572:
@@ -353,7 +350,6 @@ int32_t e1000_init_eeprom_params(struct e1000_hw *hw)
 			eeprom->address_bits = 8;
 		}
 		eeprom->use_eerd = false;
-		eeprom->use_eewr = false;
 		break;
 	case e1000_82573:
 	case e1000_82574:
@@ -369,7 +365,6 @@ int32_t e1000_init_eeprom_params(struct e1000_hw *hw)
 		}
 		if (e1000_is_onboard_nvm_eeprom(hw) == false) {
 			eeprom->use_eerd = true;
-			eeprom->use_eewr = true;
 
 			eeprom->type = e1000_eeprom_flash;
 			eeprom->word_size = 2048;
@@ -392,7 +387,6 @@ int32_t e1000_init_eeprom_params(struct e1000_hw *hw)
 			eeprom->address_bits = 8;
 		}
 		eeprom->use_eerd = true;
-		eeprom->use_eewr = false;
 		break;
 	case e1000_igb:
 		/* i210 has 4k of iNVM mapped as EEPROM */
@@ -402,7 +396,6 @@ int32_t e1000_init_eeprom_params(struct e1000_hw *hw)
 		eeprom->page_size = 32;
 		eeprom->address_bits = 16;
 		eeprom->use_eerd = true;
-		eeprom->use_eewr = false;
 		break;
 	default:
 		break;
