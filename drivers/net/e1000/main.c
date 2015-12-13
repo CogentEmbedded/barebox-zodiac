@@ -550,7 +550,7 @@ static void e1000_reset_hw(struct e1000_hw *hw)
 		reg = E1000_READ_REG(hw, STATUS);
 		if (reg & E1000_STATUS_PF_RST_DONE)
 			dev_dbg(hw->dev, "PF OK\n");
-		reg = E1000_READ_REG(hw, I210_EECD);
+		reg = E1000_READ_REG(hw, EECD);
 		if (reg & E1000_EECD_AUTO_RD)
 			dev_dbg(hw->dev, "EEC OK\n");
 	} else if (hw->mac_type < e1000_82540) {
@@ -3565,7 +3565,7 @@ static int e1000_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		dev_err(&pdev->dev, "EEPROM is invalid!\n");
 		return -EINVAL;
 	}
-	if ((E1000_READ_REG(hw, I210_EECD) & E1000_EECD_FLUPD) &&
+	if ((E1000_READ_REG(hw, EECD) & E1000_EECD_FLUPD) &&
 	    e1000_validate_eeprom_checksum(hw))
 		return -EINVAL;
 
