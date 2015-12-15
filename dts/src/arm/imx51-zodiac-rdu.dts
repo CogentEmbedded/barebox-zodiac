@@ -74,26 +74,22 @@
 	};
 
 	clocks {
-		clk_26M: 26M_clock {
+		/*
+		 * Actualy this clocks have gpio-controlable parent
+		 * and each of them also has gpio-controlable gate.
+		 * For now this pins are gpio-hogged and no runtime
+		 * clock enable-disable happens.
+		 */
+		clk_26M_usb: usbhost_clock {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <26000000>;
 		};
 
-		clk_26M_usb: usbhost_clock {
-			compatible = "gpio-gate-clock";
+		clk_26M_snd: snd_clock {
+			compatible = "fixed-clock";
 			#clock-cells = <0>;
-			clocks = <&clk_26M>;
-			clock-output-names = "usb_host_26M";
-		};
-
-		clk_26M_snd: sndclock {
-			compatible = "gpio-gate-clock";
-			#clock-cells = <0>;
-			clocks = <&clk_26M>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_sndgate26mhz>;
-			enable-gpios = <&gpio4 26 GPIO_ACTIVE_LOW>;
+			clock-frequency = <26000000>;
 		};
 	};
 
@@ -573,7 +569,7 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog &pinctrl_clk26mhz &pinctrl_usbgate26mhz>;
+	pinctrl-0 = <&pinctrl_hog &pinctrl_clk26mhz &pinctrl_usbgate26mhz &pinctrl_sndgate26mhz>;
 
 	imx51-zodiac-rdu {
 		/* done */
@@ -903,6 +899,7 @@
 };
 
 &gpio1 {
+	/* this gpio gates 26MHz clock to USB phys */
 	gpio1_19 {
 		gpio-hog;
 		gpios = <19 GPIO_ACTIVE_HIGH>;
@@ -911,6 +908,7 @@
 };
 
 &gpio3 {
+	/* this gpio enables 26MHz oscilator */
 	gpio3_1 {
 		gpio-hog;
 		gpios = <1 GPIO_ACTIVE_HIGH>;
@@ -929,5 +927,14 @@
 		gpio-hog;
 		gpios = <13 GPIO_ACTIVE_HIGH>;
 		output-high;
+	};
+};
+
+&gpio4 {
+	/* this gpio gates 26MHz clock to audio codec */
+	gpio4_26 {
+		gpio-hog;
+		gpios = <26 GPIO_ACTIVE_HIGH>;
+		output-low;
 	};
 };
