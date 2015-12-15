@@ -1,0 +1,14 @@
+#!/bin/sh
+
+path="/mnt/mmc"
+
+global.bootm.image="${path}/boot/zImage"
+
+oftree=${path}/boot/oftree
+if [ -f $oftree ]; then
+	global.bootm.oftree="$oftree"
+fi
+
+# The rootdevice may actually be mmcblk1p2 if a card
+# is inserted to the back MMC slot
+global.linux.bootargs.dyn.root="root=/dev/mmcblk1p1"

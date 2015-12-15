@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# ip setting (static/dhcp)
+ip=dhcp
+
+# static setup used if ip=static
+ipaddr=
+netmask=
+gateway=
+serverip=
+#ethaddr=80:81:82:83:84:85
