@@ -198,7 +198,6 @@
 			#size-cells = <0>;
 			reg = <0x00 0>;	/* MDIO address 0, switch 0 in tree */
 			eeprom-length = <512>;
-			reset-gpios = <&gpio4 26 GPIO_ACTIVE_LOW>;
 
 			port@0 {
 				reg = <0>;
