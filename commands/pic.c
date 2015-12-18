@@ -414,6 +414,24 @@ int do_pic_en_lcd(int argc, char *argv[])
 	return 0;
 }
 
+int do_pic_en_usb(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (!pic_cdev)
+		return -ENODEV;
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	pic_reset_comms();
+
+	pic_send_msg(NULL, CMD_USB_BOOT_ENABLE, 0);
+	len = pic_recv_msg(data);
+
+	return 0;
+}
+
 int do_pic_status(int argc, char *argv[])
 {
 	unsigned char data[64];
@@ -576,6 +594,12 @@ BAREBOX_CMD_END
 BAREBOX_CMD_START(pic_enlcd)
 	.cmd		= do_pic_en_lcd,
 	BAREBOX_CMD_DESC("Enable LCD via the Microchip PIC")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_enusb)
+	.cmd		= do_pic_en_usb,
+	BAREBOX_CMD_DESC("Enable USB via the Microchip PIC")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
