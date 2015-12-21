@@ -15,4 +15,8 @@ config DRIVER_VIDEO_IMX_IPUV3_HDMI
 	bool "IPUv3 HDMI support"
 	select OFDEVICE
 
+config DRIVER_VIDEO_IMX_IPUV3_PAR
+	bool "IPUv3 parallel display support"
+	select OFDEVICE
+
 endif
