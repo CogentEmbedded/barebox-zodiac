@@ -2176,5 +2176,24 @@ static inline uint32_t e1000_read_reg(struct e1000_hw *hw, uint32_t reg)
 }
 
 
+static inline int e1000_poll_reg(struct e1000_hw *hw, uint32_t reg,
+				 uint32_t mask, uint32_t value,
+				 uint64_t timeout)
+{
+	const uint64_t start = get_time_ns();
+
+	do {
+		const uint32_t v = e1000_read_reg(hw, reg);
+
+		if ((v & mask) == value)
+			return 0;
+
+	} while (!is_timeout(start, timeout));
+
+	return -ETIMEDOUT;
+}
+
+#define E1000_POLL_REG(a, reg, mask, value, timeout)	\
+	e1000_poll_reg((a), E1000_##reg, (mask), (value), (timeout))
 
 #endif	/* _E1000_HW_H_ */
