@@ -50,17 +50,17 @@ struct imx_internal_bbu_handler {
  * DOS partition table on the device
  */
 static int imx_bbu_write_device(struct imx_internal_bbu_handler *imx_handler,
-		struct bbu_data *data, void *buf, int image_len)
+		struct bbu_data *data, void *buf, int offset, int image_len)
 {
 	int fd, ret;
 
-	fd = open(data->devicefile, O_RDWR | O_CREAT);
+	fd = open_and_lseek(data->devicefile, O_RDWR | O_CREAT, offset);
 	if (fd < 0)
 		return fd;
 
 	if (imx_handler->flags & IMX_INTERNAL_FLAG_ERASE) {
-		debug("%s: unprotecting %s from 0 to 0x%08x\n", __func__,
-				data->devicefile, image_len);
+		debug("%s: unprotecting %s from 0x%08x to 0x%08x\n", __func__,
+				data->devicefile, offset, image_len);
 		ret = protect(fd, image_len, 0, 0);
 		if (ret && ret != -ENOSYS) {
 			printf("unprotecting %s failed with %s\n", data->devicefile,
@@ -68,8 +68,8 @@ static int imx_bbu_write_device(struct imx_internal_bbu_handler *imx_handler,
 			goto err_close;
 		}
 
-		debug("%s: erasing %s from 0 to 0x%08x\n", __func__,
-				data->devicefile, image_len);
+		debug("%s: erasing %s from 0x%08x to 0x%08x\n", __func__,
+				data->devicefile, offset, image_len);
 		ret = erase(fd, image_len, 0);
 		if (ret) {
 			printf("erasing %s failed with %s\n", data->devicefile,
@@ -157,7 +157,33 @@ static int imx_bbu_internal_v1_update(struct bbu_handler *handler, struct bbu_da
 
 	printf("updating to %s\n", data->devicefile);
 
-	ret = imx_bbu_write_device(imx_handler, data, data->image, data->len);
+	ret = imx_bbu_write_device(imx_handler, data, data->image, 0, data->len);
+
+	return ret;
+}
+
+
+/*
+ * Update barebox on a v1 type internal boot (i.MX25, i.MX35, i.MX51)
+ *
+ * Currently this handles SPI/I2C devices.
+ */
+static int imx_bbu_internal_v1_update_flash(struct bbu_handler *handler, struct bbu_data *data)
+{
+	struct imx_internal_bbu_handler *imx_handler =
+		container_of(handler, struct imx_internal_bbu_handler, handler);
+	int ret;
+
+	ret = imx_bbu_check_prereq(data);
+	if (ret)
+		return ret;
+
+	printf("updating to %s\n", data->devicefile);
+
+	/* skip 1K of header needed for SD boot */
+	ret = imx_bbu_write_device(imx_handler, data,
+		data->image + imx_handler->flash_header_offset,
+		imx_handler->flash_header_offset, data->len);
 
 	return ret;
 }
@@ -363,7 +389,7 @@ static int imx_bbu_internal_v2_update(struct bbu_handler *handler, struct bbu_da
 	if (imx_handler->flags & IMX_INTERNAL_FLAG_NAND)
 		ret = imx_bbu_internal_v2_write_nand_dbbt(imx_handler, data);
 	else
-		ret = imx_bbu_write_device(imx_handler, data, data->image, data->len);
+		ret = imx_bbu_write_device(imx_handler, data, data->image, 0, data->len);
 
 	return ret;
 }
@@ -378,7 +404,7 @@ static int imx_bbu_external_update(struct bbu_handler *handler, struct bbu_data 
 	if (ret)
 		return ret;
 
-	return imx_bbu_write_device(imx_handler, data, data->image, data->len);
+	return imx_bbu_write_device(imx_handler, data, data->image, 0, data->len);
 }
 
 static struct imx_internal_bbu_handler *__init_handler(const char *name, char *devicefile,
@@ -436,8 +462,7 @@ int imx51_bbu_internal_spi_i2c_register_handler(const char *name, char *devicefi
 	imx_handler = __init_handler(name, devicefile, flags);
 	imx_handler->flash_header_offset = FLASH_HEADER_OFFSET_FLASH;
 
-	imx_handler->flags = IMX_INTERNAL_FLAG_ERASE;
-	imx_handler->handler.handler = imx_bbu_internal_v1_update;
+	imx_handler->handler.handler = imx_bbu_internal_v1_update_flash;
 
 	return __register_handler(imx_handler);
 }
