@@ -402,9 +402,14 @@
 		spi-max-frequency = <25000000>;
 		reg = <1>;
 
-		partition@0 {
+		environment_at45:partition@0 {
+			label = "config";
+			reg = <0x0 0x00000400>;
+		};
+
+		partition@400 {
 			label = "bootloader";
-			reg = <0x0 0x00100000>;
+			reg = <0x00000400 0x000FFC00>;
 		};
 
 		partition@100000 {
