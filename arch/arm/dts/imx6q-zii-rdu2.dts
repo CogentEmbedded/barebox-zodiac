@@ -324,6 +324,35 @@
 	status = "okay";
 };
 
+&ldb {
+	status = "okay";
+
+	lvds-channel@0 {
+		fsl,data-mapping = "spwg";
+		fsl,data-width = <24>;
+		crtc = "ipu2-di0";
+		status = "okay";
+		primary;
+
+		display-timings {
+			native-mode = <&timing_innolux_10_1>;
+			timing_innolux_10_1: innolux_10_1 {
+				clock-frequency = <71100000>;
+				hactive 	= <1280>;
+				vactive 	= <800>;
+				hback-porch 	= <40>;
+				hfront-porch 	= <40>;
+				vback-porch 	= <10>;
+				vfront-porch 	= <3>;
+				hsync-len 	= <80>;
+				vsync-len 	= <10>;
+				de-active 	= <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+};
+
 &pcie {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcie>;
