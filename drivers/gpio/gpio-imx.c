@@ -108,9 +108,9 @@ static int imx_gpio_get_value(struct gpio_chip *chip, unsigned gpio)
 	void __iomem *base = imxgpio->base;
 	u32 val;
 
-	val = readl(base + imxgpio->regs->psr);
+	val = readl(base + imxgpio->regs->dr);
 
-	return val & (1 << gpio) ? 1 : 0;
+	return (val & (1 << gpio)) ? 1 : 0;
 }
 
 static int imx_get_direction(struct gpio_chip *chip, unsigned offset)
