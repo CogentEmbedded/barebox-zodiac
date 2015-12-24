@@ -1515,6 +1515,13 @@ config CMD_SPLASH
 		  -b COLOR	background color in 0xttrrggbb
 		  -o		render offscreen
 
+config CMD_FBTEST
+	bool
+	depends on VIDEO
+	prompt "FB test"
+	help
+	  Simple FB draw commands
+
 config CMD_READLINE
 	tristate
 	prompt "readline"

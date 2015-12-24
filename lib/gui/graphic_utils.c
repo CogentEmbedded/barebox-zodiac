@@ -336,3 +336,175 @@ void gu_screen_blit(struct screen *sc)
 	if (info->screen_base_shadow)
 		memcpy(info->screen_base, info->screen_base_shadow, sc->fbsize);
 }
+
+void gu_put_pixel(struct fb_info *info, void *buf,
+			int x, int y,
+			u8 r, u8 g, u8 b, u8 a)
+{
+	unsigned char *adr;
+
+	adr = buf + y * info->line_length +
+		x * (info->bits_per_pixel >> 3);
+
+	gu_set_rgba_pixel(info, adr, r, g, b, a);
+}
+
+void gu_fill_frame(struct fb_info *info, void *buf,
+			int x1, int y1, int x2, int y2,
+			u8 r, u8 g, u8 b, u8 a)
+{
+	int x, y;
+	int line_length;
+	unsigned char *adr;
+
+	if (x2 < x1)
+		swap(x1, x2);
+	if (y2 < y1)
+		swap(y1, y2);
+
+	line_length = info->line_length;
+
+	for(y = y1; y <= y2; y++) {
+		adr = buf + y * line_length +
+				x1 * (info->bits_per_pixel >> 3);
+		for(x = x1; x <= x2; x++) {
+			gu_set_rgba_pixel(info, adr, r, g, b, a);
+			adr += info->bits_per_pixel >> 3;
+		}
+	}
+}
+
+void gu_fill_screen(struct fb_info *info, void *buf,
+			u8 r, u8 g, u8 b, u8 a)
+{
+	gu_fill_frame(info, buf, 0, 0, info->xres - 1, info->yres - 1, r, g, b, a);
+}
+
+#define put_pixel(x, y)	gu_put_pixel(info, buf, x, y, r, g, b, a)
+
+void gu_draw_line(struct fb_info *info, void *buf,
+			int x1, int y1, int x2, int y2,
+			u8 r, u8 g, u8 b, u8 a)
+{
+	int n, dx, dy, sgndx, sgndy, dxabs, dyabs, x, y, drawx, drawy;
+
+	dx = x2 - x1;
+	dy = y2 - y1;
+	dxabs = (dx > 0) ? dx : -dx;
+	dyabs = (dy > 0) ? dy : -dy;
+	sgndx = (dx > 0) ? 1 : -1;
+	sgndy = (dy > 0) ? 1 : -1;
+	x = dyabs >> 1;
+	y = dxabs >> 1;
+	drawx = x1;
+	drawy = y1;
+
+	put_pixel(drawx, drawy);
+
+	if (dxabs >= dyabs) {
+		for (n = 0; n < dxabs; n++) {
+			y += dyabs;
+			if (y >= dxabs) {
+				y -= dxabs;
+				drawy += sgndy;
+			}
+			drawx += sgndx;
+			put_pixel(drawx, drawy);
+		}
+	} else {
+		for (n = 0; n < dyabs; n++) {
+			x += dxabs;
+			if (x >= dyabs) {
+				x -= dyabs;
+				drawx += sgndx;
+			}
+			drawy += sgndy;
+			put_pixel(drawx, drawy);
+		}
+	}
+}
+
+void gu_draw_line_dotted(struct fb_info *info, void *buf,
+			int x1, int y1, int x2, int y2,
+			u8 r, u8 g, u8 b, u8 a, int dot_int)
+{
+	int n, dx, dy, sgndx, sgndy, dxabs, dyabs, x, y, drawx, drawy;
+	int d = 0;
+
+	dx = x2 - x1;
+	dy = y2 - y1;
+	dxabs = (dx > 0) ? dx : -dx;
+	dyabs = (dy > 0) ? dy : -dy;
+	sgndx = (dx > 0) ? 1 : -1;
+	sgndy = (dy > 0) ? 1 : -1;
+	x = dyabs >> 1;
+	y = dxabs >> 1;
+	drawx = x1;
+	drawy = y1;
+
+	put_pixel(drawx, drawy);
+
+	if (dxabs >= dyabs) {
+		for (n = 0; n < dxabs; n++) {
+			y += dyabs;
+			if (y >= dxabs) {
+				y -= dxabs;
+				drawy += sgndy;
+			}
+			drawx += sgndx;
+			if (d < (dot_int >> 1))
+				put_pixel(drawx, drawy);
+			if (++d >= dot_int)
+				d = 0;
+		}
+	} else {
+		for (n = 0; n < dyabs; n++) {
+			x += dxabs;
+			if (x >= dyabs) {
+				x -= dyabs;
+				drawx += sgndx;
+			}
+			drawy += sgndy;
+			if (d < (dot_int >> 1))
+				put_pixel(drawx, drawy);
+			if (++d >= dot_int)
+				d = 0;
+		}
+	}
+}
+
+void gu_draw_circle(struct fb_info *info, void *buf,
+			int x0, int y0, int R,
+			u8 r, u8 g, u8 b, u8 a)
+{
+	int x, y, xd, yd, e;
+
+	if ((x0 < 0) || (y0 < 0) || (R <= 0))
+		return;
+
+	xd = 1 - (R << 1);
+	yd = 0;
+	e = 0;
+	x = R;
+	y = 0;
+
+	while (x >= y) {
+		put_pixel(x0 - x, y0 + y);
+		put_pixel(x0 - x, y0 - y);
+		put_pixel(x0 + x, y0 + y);
+		put_pixel(x0 + x, y0 - y);
+		put_pixel(x0 - y, y0 + x);
+		put_pixel(x0 - y, y0 - x);
+		put_pixel(x0 + y, y0 + x);
+		put_pixel(x0 + y, y0 - x);
+
+		y++;
+		e += yd;
+		yd += 2;
+		if (((e << 1) + xd) > 0) {
+			x--;
+			e += xd;
+			xd += 2;
+		}
+	}
+}
