@@ -27,5 +27,19 @@ void gu_invert_area(struct fb_info *info, void *buf, int startx, int starty, int
 		int height);
 void gu_screen_blit_area(struct screen *sc, int startx, int starty, int width,
 		int height);
+void gu_fill_frame(struct fb_info *info, void *buf,
+		int x1, int y1, int x2, int y2,
+		u8 r, u8 g, u8 b, u8 a);
+void gu_fill_screen(struct fb_info *info, void *buf,
+		u8 r, u8 g, u8 b, u8 a);
+void gu_draw_line(struct fb_info *info, void *buf,
+		int x1, int y1, int x2, int y2,
+		u8 r, u8 g, u8 b, u8 a);
+void gu_draw_line_dotted(struct fb_info *info, void *buf,
+		int x1, int y1, int x2, int y2,
+		u8 r, u8 g, u8 b, u8 a, int dot_int);
+void gu_draw_circle(struct fb_info *info, void *buf,
+		int x0, int y0, int R,
+		u8 r, u8 g, u8 b, u8 a);
 
 #endif /* __GRAPHIC_UTILS_H__ */
