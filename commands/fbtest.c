@@ -19,8 +19,8 @@ static const struct {
 } color_names[] = {
 	{"white",	0x00FFFFFF},
 	{"yellow",	0x00FFFF00},
-	{"cyan",	0x00000FFF},
-	{"green",	0x00008000},
+	{"cyan",	0x0000FFFF},
+	{"green",	0x0000FF00},
 	{"magenta",	0x00FF00FF},
 	{"red",		0x00FF0000},
 	{"blue",	0x000000FF},
@@ -84,7 +84,7 @@ static void draw_test_pattern(struct screen *sc, void *buf, u32 color)
 	gu_memset_pixel(sc->info, buf, ~color,
 			sc->s.width * sc->s.height);
 
-	/* these two whould be dotted */
+	/* these two should be dotted */
 	gu_draw_line_dotted(sc->info, buf,
 			0, 0,
 			sc->info->xres - 1, 0,
@@ -101,7 +101,7 @@ static void draw_test_pattern(struct screen *sc, void *buf, u32 color)
 				r, g, b, 0xff);
 	}
 
-	/* these two whould be dotted */
+	/* these two should be dotted */
 	gu_draw_line_dotted(sc->info, buf,
 			0, 0,
 			0, sc->info->yres - 1,
@@ -152,30 +152,43 @@ static void draw_test_pattern(struct screen *sc, void *buf, u32 color)
 
 static void draw_test_lvds(struct screen *sc, void *buf, u32 __color)
 {
-	u32 color = 0x00000001;
-	u8 r, g, b;
-	int x;
-	int y = 0;
+	int i, j;
+	/* initial size 32x32, but can be too big for small resolutions */
+	int size = 32;
+	bool dec = false;
 
-	/* need update */
-	while (y + 32 < sc->info->yres) {
+	/* try to fit */
+	do {
+		int cols, rows;
+		if (dec)
+			size--;
+		dec = false;
+		cols = sc->info->xres / size;
+		rows = 256 / cols;
+		if (rows * cols != 255)
+			rows++;
+		rows *= 3;
+		if (size * rows > sc->info->yres)
+			dec = true;
+	} while (dec);
+
+	for (i = 0; i < 3; i++) {
+		int x, y;
+		u8 color[3] = {0, 0, 0};
+
+		y = sc->info->yres * i / 3;
 		x = 0;
-		while (x + 32 < sc->info->xres) {
-			r = (color >> 16) & 0xff;
-			g = (color >> 8) & 0xff;
-			b = (color >> 0) & 0xff;
-
+		for (j = 0; j < 256; j++) {
 			gu_fill_frame(sc->info, buf,
-					x, y, x + 31, y + 31,
-					r, g, b, 0xff);
-
-			/* runing bit */
-			color = color << 1 | color >> 22;
-			color &= 0x00FFFFFF;
-
-			x += 32;
+					x, y, x + size - 1, y + size - 1,
+					color[0], color[1], color[2], 0xff);
+			x += size;
+			if (x + size - 1 >= sc->info->xres) {
+				x = 0;
+				y += size;
+			}
+			color[i]++;
 		}
-		y += 32;
 	}
 }
 
@@ -264,7 +277,7 @@ BAREBOX_CMD_HELP_END
 
 BAREBOX_CMD_START(test_pattern)
 	.cmd		= do_test_pattern,
-	BAREBOX_CMD_DESC("display a test pattern, VLDS pattern or fill screen")
+	BAREBOX_CMD_DESC("display a test pattern, LVDS pattern or fill screen")
 	BAREBOX_CMD_OPTS("[-fcFbgl] FILE")
 	BAREBOX_CMD_GROUP(CMD_GRP_CONSOLE)
 	BAREBOX_CMD_HELP(cmd_test_pattern_help)
