@@ -22,8 +22,76 @@
 	model = "ZII RDU2 Board";
 	compatible = "zii,imx6q-zii-rdu2", "fsl,imx6q-sabreauto", "fsl,imx6q";
 
+	aliases {
+		mdio-gpio0 = &mdio1;
+	};
+
 	chosen {
 		linux,stdout-path = &uart1;
+	};
+
+	mdio1: mdio {
+		compatible = "virtual,mdio-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_mdio1>;
+		gpios = <&gpio6 5 GPIO_ACTIVE_HIGH
+			 &gpio6 4 GPIO_ACTIVE_HIGH>;
+	};
+
+	dsa@0 {
+		compatible = "marvell,dsa";
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		dsa,ethernet = <&fec>;
+		dsa,mii-bus = <&mdio1>;
+
+		switch0: switch@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x00 0>;
+			eeprom-length = <512>;
+
+			port@0 {
+				reg = <0>;
+				label = "gigabit_proc";
+			};
+
+			port@1 {
+				reg = <1>;
+				label = "netaux";
+			};
+
+			port@2 {
+				reg = <2>;
+				label = "cpu";
+			};
+
+			port@3 {
+				reg = <3>;
+				label = "netright";
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "netleft";
+			};
+		};
+	};
+};
+
+&fec {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_enet>;
+	phy-mode = "rmii";
+	phy-reset-gpios = <&gpio1 23 0>;
+	status = "okay";
+
+	fixed-link {
+	   speed = <100>;
+	   full-duplex;
 	};
 };
 
@@ -115,6 +183,14 @@
 				MX6QDL_PAD_EIM_EB1__GPIO2_IO29		0x1b0b0 /*BT_CFG4_4*/
 				MX6QDL_PAD_EIM_RW__GPIO2_IO26		0x1b0b0 /*BT_CFG4_5*/
 				MX6QDL_PAD_EIM_EB3__GPIO2_IO31		0x1b0b0 /*BT_CFG4_7*/
+			>;
+		};
+
+		pinctrl_mdio1: bitbangmdiogrp {
+			fsl,pins = <
+				/* Bitbang MDIO for DEB Switch */
+				MX6QDL_PAD_CSI0_DAT19__GPIO6_IO05	0x1b030 /*SWITCH_MDC*/
+				MX6QDL_PAD_CSI0_DAT18__GPIO6_IO04	0x18830 /*SWITCH_MDIO*/
 			>;
 		};
 
@@ -402,9 +478,4 @@
 	phy-mode = "rmii";
 	phy-reset-gpios = <&gpio1 23 0>;
 	status = "okay";
-
-	fixed-link {
-	   speed = <100>;
-	   full-duplex;
-	};
 };
