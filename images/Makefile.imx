@@ -54,6 +54,41 @@ CFG_start_imx51_babbage_xload.pblx.imximg = $(board)/freescale-mx51-babbage/flas
 FILE_barebox-freescale-imx51-babbage-xload.img = start_imx51_babbage_xload.pblx.imximg
 imx-xload-$(CONFIG_MACH_FREESCALE_MX51_PDK) += barebox-freescale-imx51-babbage-xload.img
 
+pblx-$(CONFIG_MACH_ZODIAC_NIU) += start_zodiac
+CFG_start_zodiac_niu.pblx.imximg = $(board)/zodiac/flash-header-zodiac.imxcfg
+FILE_barebox-zodiac-niu.img = start_zodiac_niu.pblx.imximg
+imx-barebox-$(CONFIG_MACH_ZODIAC_NIU) += barebox-zodiac-niu.img
+
+pblx-$(CONFIG_MACH_ZODIAC_NIU) += start_zodiac_xload
+CFG_start_zodiac_xload.pblx.imximg = $(board)/zodiac/flash-header-zodiac-xload.imxcfg
+FILE_barebox-zodiac-niu-xload.img = start_zodiac_niu_xload.pblx.imximg
+imx-xload-$(CONFIG_MACH_ZODIAC_NIU) += barebox-zodiac-niu-xload.img
+
+pblx-$(CONFIG_MACH_ZODIAC_MEZZ) += start_zodiac
+CFG_start_zodiac_mezz.pblx.imximg = $(board)/zodiac/flash-header-zodiac.imxcfg
+FILE_barebox-zodiac-mezz.img = start_zodiac_mezz.pblx.imximg
+imx-barebox-$(CONFIG_MACH_ZODIAC_MEZZ) += barebox-zodiac-mezz.img
+
+pblx-$(CONFIG_MACH_ZODIAC_MEZZ) += start_zodiac_xload
+CFG_start_zodiac_mezz_xload.pblx.imximg = $(board)/zodiac/flash-header-zodiac-xload.imxcfg
+FILE_barebox-zodiac-mezz-xload.img = start_zodiac_mezz_xload.pblx.imximg
+imx-xload-$(CONFIG_MACH_ZODIAC_MEZZ) += barebox-zodiac-mezz-xload.img
+
+pblx-$(CONFIG_MACH_ZODIAC_ESB) += start_zodiac
+CFG_start_zodiac_esb.pblx.imximg = $(board)/zodiac/flash-header-zodiac.imxcfg
+FILE_barebox-zodiac-esb.img = start_zodiac_esb.pblx.imximg
+imx-barebox-$(CONFIG_MACH_ZODIAC_ESB) += barebox-zodiac-esb.img
+
+pblx-$(CONFIG_MACH_ZODIAC_ESB) += start_zodiac_xload
+CFG_start_zodiac_esb_xload.pblx.imximg = $(board)/zodiac/flash-header-zodiac-xload.imxcfg
+FILE_barebox-zodiac-esb-xload.img = start_zodiac_esb_xload.pblx.imximg
+imx-xload-$(CONFIG_MACH_ZODIAC_ESB) += barebox-zodiac-esb-xload.img
+
+pblx-$(CONFIG_MACH_ZODIAC_RDU) += start_zodiac
+CFG_start_zodiac_rdu.pblx.imximg = $(board)/zodiac/flash-header-zodiac.imxcfg
+FILE_barebox-zodiac-rdu.img = start_zodiac_rdu.pblx.imximg
+imx-barebox-$(CONFIG_MACH_ZODIAC_RDU) += barebox-zodiac-rdu.img
+
 ifdef CONFIG_ARCH_IMX_XLOAD
 image-y += $(imx-xload-y)
 else
