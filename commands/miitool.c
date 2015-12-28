@@ -237,11 +237,14 @@ static void mdiobus_show(struct device_d *dev, char *phydevname, int verbose)
 			continue;
 		if (phydev->registered) {
 
-			show_basic_mii(mii, phydev, verbose);
-
-			if (phydevname &&
-				!strcmp(phydev->cdev.name, phydevname)) {
-				return;
+			/*
+			 * no phy name provided or
+			 * phy name provided and equal
+			 */
+			if ((!phydevname) ||
+				(phydevname &&
+				!strcmp(phydev->cdev.name, phydevname))) {
+				show_basic_mii(mii, phydev, verbose);
 			}
 		}
 
@@ -277,6 +280,8 @@ static int do_miitool(int argc, char *argv[])
 	}
 
 	for_each_mii_bus(mii) {
+		if (!phydevname)
+			printf("%s%d:\n", mii->dev.name, mii->dev.id);
 		mdiobus_detect(&mii->dev);
 		mdiobus_show(&mii->dev, phydevname, verbose);
 	}
