@@ -61,7 +61,7 @@
 
 			port@1 {
 				reg = <1>;
-				label = "aux";
+				label = "netaux";
 			};
 
 			port@2 {
@@ -71,12 +71,12 @@
 
 			port@3 {
 				reg = <3>;
-				label = "right";
+				label = "netright";
 			};
 
 			port@4 {
 				reg = <4>;
-				label = "left";
+				label = "netleft";
 			};
 		};
 	};
