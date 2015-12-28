@@ -157,6 +157,10 @@ static void draw_test_lvds(struct screen *sc, void *buf, u32 __color)
 	int size = 32;
 	bool dec = false;
 
+	/* clear screen with black */
+	gu_memset_pixel(sc->info, buf, 0x0,
+			sc->s.width * sc->s.height);
+
 	/* try to fit */
 	do {
 		int cols, rows;
@@ -180,7 +184,7 @@ static void draw_test_lvds(struct screen *sc, void *buf, u32 __color)
 		x = 0;
 		for (j = 0; j < 256; j++) {
 			gu_fill_frame(sc->info, buf,
-					x, y, x + size - 1, y + size - 1,
+					x, y, x + size - 2, y + size - 2,
 					color[0], color[1], color[2], 0xff);
 			x += size;
 			if (x + size - 1 >= sc->info->xres) {
