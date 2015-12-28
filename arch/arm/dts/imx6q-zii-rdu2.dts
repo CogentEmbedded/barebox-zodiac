@@ -478,9 +478,4 @@
 	phy-mode = "rmii";
 	phy-reset-gpios = <&gpio1 23 0>;
 	status = "okay";
-
-	fixed-link {
-	   speed = <100>;
-	   full-duplex;
-	};
 };
