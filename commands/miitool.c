@@ -41,6 +41,22 @@
 #include <linux/phy.h>
 #include <linux/err.h>
 
+static void extract_range(
+	char * input,
+	unsigned char * plo,
+	unsigned char * phi)
+{
+	char * end;
+	*plo = simple_strtoul(input, &end, 16);
+	if (*end == '-') {
+		end++;
+		*phi = simple_strtoul(end, NULL, 16);
+	}
+	else {
+		*phi = *plo;
+	}
+}
+
 const struct {
 	char	*name;
 	u_short	value[2];
@@ -367,4 +383,94 @@ BAREBOX_CMD_START(miitool)
 	BAREBOX_CMD_OPTS("[-vsr]")
 	BAREBOX_CMD_GROUP(CMD_GRP_NET)
 	BAREBOX_CMD_HELP(cmd_miitool_help)
+BAREBOX_CMD_END
+
+static struct mii_bus *miiphy_get_bus(int n)
+{
+	struct mii_bus *mii;
+
+	for_each_mii_bus(mii)
+		if (n == mii->dev.id)
+			return mii;
+
+	return ERR_PTR(-ENODEV);
+}
+
+static int do_mii(int argc, char *argv[])
+{
+	unsigned char addrlo = 0;
+	unsigned char addrhi = 0;
+	unsigned char reglo = 0;
+	unsigned char reghi = 0;
+	unsigned char bus = 0;
+	unsigned short data[32];
+	unsigned short data_w = 0;
+	int addr, reg;
+	struct mii_bus	*mii;
+
+	if (argc < 2)
+		return COMMAND_ERROR_USAGE;
+
+	if (argc >= 3)
+		bus = simple_strtoul(argv[2], NULL, 10);
+	if (argc >= 4) {
+		extract_range(argv[3], &addrlo, &addrhi);
+		if ((addrlo >= PHY_MAX_ADDR) || (addrhi >= PHY_MAX_ADDR))
+			return -EINVAL;
+	}
+	if (argc >= 5) {
+		extract_range(argv[4], &reglo, &reghi);
+		if ((reglo >= 32) || (reghi >= 32))
+			return -EINVAL;
+	}
+	if (argc >= 6)
+		data_w = simple_strtoul(argv[5], NULL, 16);
+
+	/* get bus */
+	mii = miiphy_get_bus(bus);
+	if (IS_ERR(mii))
+		return -ENODEV;
+
+	/* read/write */
+	if (argv[1][0] == 'r') {
+		for (addr = addrlo; addr <= addrhi; addr++) {
+			printf("Read %d.%02x: %02x..%02x\n", bus, addr, reglo, reghi);
+			for (reg = reglo; reg <= reghi; reg++)
+				data[reg] = mii->read(mii, addr, reg);
+			memory_display(data, reglo, reghi - reglo + 1, 2, 0);
+		}
+	} else if (argv[1][0] == 'w') {
+		if (argc < 6)
+			return COMMAND_ERROR_USAGE;
+		for (addr = addrlo; addr <= addrhi; addr++) {
+			printf("Write %d.%02x: %02x..%02x %02x\n", bus, addr, reglo, reghi, data_w);
+			for (reg = reglo; reg <= reghi; reg++)
+				mii->write(mii, addr, reg, data_w);
+		}
+	} else if (argv[1][0] == 'l') {
+		printf("List of MDIO buses:\n");
+		for_each_mii_bus(mii)
+			printf(" %s%d\n", mii->dev.name, mii->dev.id);
+	} else {
+		return COMMAND_ERROR_USAGE;
+	}
+
+	return COMMAND_SUCCESS;
+}
+
+
+BAREBOX_CMD_HELP_START(mii)
+BAREBOX_CMD_HELP_TEXT("")
+BAREBOX_CMD_HELP_TEXT("Options:")
+BAREBOX_CMD_HELP_TEXT("mii r <bus> <addr> <reg> read  MII PHY <addr> register <reg>")
+BAREBOX_CMD_HELP_TEXT("mii w <bus> <addr> <reg> <data> write MII PHY <addr> register <reg>")
+BAREBOX_CMD_HELP_TEXT("mii l list MDIO buses")
+BAREBOX_CMD_HELP_TEXT("Addr and/or reg may be ranges, e.g. 2-7.")
+BAREBOX_CMD_HELP_END
+
+BAREBOX_CMD_START(mii)
+	.cmd		= do_mii,
+	BAREBOX_CMD_DESC("MII utility commands")
+	BAREBOX_CMD_GROUP(CMD_GRP_NET)
+	BAREBOX_CMD_HELP(cmd_mii_help)
 BAREBOX_CMD_END
