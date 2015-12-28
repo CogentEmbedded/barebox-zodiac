@@ -368,7 +368,9 @@
 	status = "okay";
 	pic {
 		compatible = "zii,pic-niu";
+		current-speed = <57600>;
 		status = "okay";
+
 		watchdog {
 			compatible = "zii,pic-watchdog";
 			status = "okay";
