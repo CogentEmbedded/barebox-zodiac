@@ -336,6 +336,21 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	status = "okay";
+	pic {
+		compatible = "zii,pic-mezz";
+		current-speed = <57600>;
+		status = "okay";
+
+		watchdog {
+			compatible = "zii,pic-watchdog";
+			status = "okay";
+		};
+		hwmon {
+			compatible = "zii,pic-hwmon";
+			sensors = "12V","TEMPERATURE";
+			status = "okay";
+		};
+	};
 };
 
 &usbotg {

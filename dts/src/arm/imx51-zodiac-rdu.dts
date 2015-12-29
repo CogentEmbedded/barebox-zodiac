@@ -542,6 +542,16 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	status = "okay";
+	pic {
+		compatible = "zii,pic-rdu";
+		current-speed = <38400>;
+		status = "okay";
+
+		watchdog {
+			compatible = "zii,pic-watchdog";
+			status = "okay";
+		};
+	};
 };
 
 &usbh1 {

@@ -204,8 +204,6 @@ static int imx51_zodiac_lateinit(void)
 postenvironment_initcall(imx51_zodiac_lateinit);
 #endif
 
-#endif
-
 #ifdef CONFIG_ARCH_IMX_XLOAD
 
 static int imx51_zodiac_xload_init_pinmux(void)
