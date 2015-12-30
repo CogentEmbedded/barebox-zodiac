@@ -552,6 +552,29 @@ int do_pic_get_bl(int argc, char *argv[])
 	return 0;
 }
 
+int do_pic_get_rev(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (!pic_cdev)
+		return -ENODEV;
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	pic_reset_comms();
+
+	pic_send_msg(NULL, CMD_REQ_COPPER_REV, 0);
+	len = pic_recv_msg(data);
+	if (len < 0)
+		return len;
+
+	printf("RDU rev: %d\n", data[2]);
+	printf("DDS rev: %d\n", data[3]);
+
+	return 0;
+}
+
 int do_pic_reset(int argc, char *argv[])
 {
 	unsigned char data[64];
@@ -722,6 +745,12 @@ BAREBOX_CMD_END
 BAREBOX_CMD_START(pic_bl)
 	.cmd		= do_pic_get_bl,
 	BAREBOX_CMD_DESC("Get PIC BL version")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_pcb_rev)
+	.cmd		= do_pic_get_rev,
+	BAREBOX_CMD_DESC("Get PCB revision")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
