@@ -473,6 +473,15 @@ int do_pic_status(int argc, char *argv[])
 	temp2 = data[26] | data[27] << 8;
 	printf("T2 = %d.%d\n", temp2 >> 1, (temp2 & 0x01) ? 5 : 0);
 
+	/* power on counter in sec */
+	printf("EC: %d sec\n",
+		data[20] | (data[21] << 8) |
+		(data[22] << 16) | (data[23] << 24));
+
+	/* 28V fixed point 8.8 */
+	printf("28V: %d.%03d\n",
+		data[34], data[33] * 256 / 1000);
+
 	return 0;
 }
 
@@ -548,6 +557,45 @@ int do_pic_get_bl(int argc, char *argv[])
 	/* BL */
 	printf("BL: %02d.%02d%02d.%02d.%c%c\n",
 		data[2], data[3], data[4], data[5], data[6], data[7]);
+
+	return 0;
+}
+
+int do_pic_get_v(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	len = pic_get_status(data);
+	if (len < 0)
+		return len;
+
+	/* 28V fixed point 8.8 */
+	printf("28V: %d.%03d\n",
+		data[34], data[33] * 256 / 1000);
+
+	return 0;
+}
+
+int do_pic_get_etc(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	len = pic_get_status(data);
+	if (len < 0)
+		return len;
+
+	/* power on counter in sec */
+	printf("EC: %d sec\n",
+		data[20] | (data[21] << 8) |
+		(data[22] << 16) | (data[23] << 24));
 
 	return 0;
 }
@@ -751,6 +799,18 @@ BAREBOX_CMD_END
 BAREBOX_CMD_START(pic_pcb_rev)
 	.cmd		= do_pic_get_rev,
 	BAREBOX_CMD_DESC("Get PCB revision")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_28v_reading)
+	.cmd		= do_pic_get_v,
+	BAREBOX_CMD_DESC("Get 28V voltage")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_etc)
+	.cmd		= do_pic_get_etc,
+	BAREBOX_CMD_DESC("Get power on counter")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
