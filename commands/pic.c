@@ -432,26 +432,36 @@ int do_pic_en_usb(int argc, char *argv[])
 	return 0;
 }
 
+static int pic_get_status(unsigned char *data)
+{
+	if (!pic_cdev)
+		return -ENODEV;
+
+	pic_reset_comms();
+
+	pic_send_msg(NULL, CMD_STATUS, 0);
+	return pic_recv_msg(data);
+}
+
 int do_pic_status(int argc, char *argv[])
 {
 	unsigned char data[64];
 	int len;
 	s16 temp1, temp2;
 
-	if (!pic_cdev)
-		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	pic_reset_comms();
-
-	pic_send_msg(NULL, CMD_STATUS, 0);
-	len = pic_recv_msg(data);
-
+	len = pic_get_status(data);
 	if (len < 0)
 		return len;
 
-	printf("RSP message %02x (%d)\n", data[0], len);
+	/* BL */
+	printf("BL: %02d.%02d%02d.%02d.%c%c\n",
+		data[2], data[3], data[4], data[5], data[6], data[7]);
+	/* FW */
+	printf("FW: %02d.%02d%02d.%02d.%c%c\n",
+		data[8], data[9], data[10], data[11], data[12], data[13]);
 
 	printf("BL: %d, %s, %d mA\n",
 		data[28] & 0x7f,
@@ -462,6 +472,44 @@ int do_pic_status(int argc, char *argv[])
 	printf("T1 = %d.%d\n", temp1 >> 1, (temp1 & 0x01) ? 5 : 0);
 	temp2 = data[26] | data[27] << 8;
 	printf("T2 = %d.%d\n", temp2 >> 1, (temp2 & 0x01) ? 5 : 0);
+
+	return 0;
+}
+
+int do_pic_get_fw(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	len = pic_get_status(data);
+	if (len < 0)
+		return len;
+
+	/* FW */
+	printf("FW: %02d.%02d%02d.%02d.%c%c\n",
+		data[8], data[9], data[10], data[11], data[12], data[13]);
+
+	return 0;
+}
+
+int do_pic_get_bl(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	len = pic_get_status(data);
+	if (len < 0)
+		return len;
+
+	/* BL */
+	printf("BL: %02d.%02d%02d.%02d.%c%c\n",
+		data[2], data[3], data[4], data[5], data[6], data[7]);
 
 	return 0;
 }
@@ -612,6 +660,18 @@ BAREBOX_CMD_END
 BAREBOX_CMD_START(pic_status)
 	.cmd		= do_pic_status,
 	BAREBOX_CMD_DESC("Get PIC status")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_fw)
+	.cmd		= do_pic_get_fw,
+	BAREBOX_CMD_DESC("Get PIC FW version")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_bl)
+	.cmd		= do_pic_get_bl,
+	BAREBOX_CMD_DESC("Get PIC BL version")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
