@@ -436,6 +436,7 @@ int do_pic_status(int argc, char *argv[])
 {
 	unsigned char data[64];
 	int len;
+	s16 temp1, temp2;
 
 	if (!pic_cdev)
 		return -ENODEV;
@@ -456,6 +457,11 @@ int do_pic_status(int argc, char *argv[])
 		data[28] & 0x7f,
 		data[28] & 0x80 ? "en" : "dis",
 		(data[30] << 8) | data[29]);
+
+	temp1 = data[24] | data[25] << 8;
+	printf("T1 = %d.%d\n", temp1 >> 1, (temp1 & 0x01) ? 5 : 0);
+	temp2 = data[26] | data[27] << 8;
+	printf("T2 = %d.%d\n", temp2 >> 1, (temp2 & 0x01) ? 5 : 0);
 
 	return 0;
 }
