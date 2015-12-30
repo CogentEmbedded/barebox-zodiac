@@ -333,6 +333,23 @@ static struct mii_bus *miiphy_get_bus(int n)
 	return ERR_PTR(-ENODEV);
 }
 
+#define OUTPUT_REG_PER_LINE	8
+static void dump_regs(unsigned short *regs, int reglo, int reghi)
+{
+	int i;
+	for (i = 0; i < 32; i++) {
+		if ((i % OUTPUT_REG_PER_LINE) == 0)
+			printf("%02x:", i);
+		if ((i >= reglo) && (i <= reghi))
+			printf(" %04x", regs[i]);
+		else
+			printf(" xxxx");
+		if ((i) && ((i % OUTPUT_REG_PER_LINE) == (OUTPUT_REG_PER_LINE - 1)))
+			printf("\n");
+	}
+	printf("\n");
+}
+
 static int do_mii(int argc, char *argv[])
 {
 	unsigned char addrlo = 0;
@@ -374,7 +391,10 @@ static int do_mii(int argc, char *argv[])
 			printf("Read %d.%02x: %02x..%02x\n", bus, addr, reglo, reghi);
 			for (reg = reglo; reg <= reghi; reg++)
 				data[reg] = mii->read(mii, addr, reg);
-			memory_display(data, reglo, reghi - reglo + 1, 2, 0);
+			if (reglo == reghi)
+				printf("%02x: %04x\n", reglo, data[reglo]);
+			else
+				dump_regs(data, reglo, reghi);
 		}
 	} else if (argv[1][0] == 'w') {
 		if (argc < 6)
