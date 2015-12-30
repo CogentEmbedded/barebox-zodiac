@@ -476,6 +476,44 @@ int do_pic_status(int argc, char *argv[])
 	return 0;
 }
 
+int do_pic_temp_1(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+	s16 temp1;
+
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	len = pic_get_status(data);
+	if (len < 0)
+		return len;
+
+	temp1 = data[24] | data[25] << 8;
+	printf("T1 = %d.%d\n", temp1 >> 1, (temp1 & 0x01) ? 5 : 0);
+
+	return 0;
+}
+
+int do_pic_temp_2(int argc, char *argv[])
+{
+	unsigned char data[64];
+	int len;
+	s16 temp2;
+
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	len = pic_get_status(data);
+	if (len < 0)
+		return len;
+
+	temp2 = data[26] | data[27] << 8;
+	printf("T2 = %d.%d\n", temp2 >> 1, (temp2 & 0x01) ? 5 : 0);
+
+	return 0;
+}
+
 int do_pic_get_fw(int argc, char *argv[])
 {
 	unsigned char data[64];
@@ -660,6 +698,18 @@ BAREBOX_CMD_END
 BAREBOX_CMD_START(pic_status)
 	.cmd		= do_pic_status,
 	BAREBOX_CMD_DESC("Get PIC status")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_temp_1)
+	.cmd		= do_pic_temp_1,
+	BAREBOX_CMD_DESC("Get PIC temperature 1")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
+BAREBOX_CMD_START(pic_temp_2)
+	.cmd		= do_pic_temp_2,
+	BAREBOX_CMD_DESC("Get PIC temperature 2")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
