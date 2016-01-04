@@ -380,6 +380,27 @@
 			sensors = "28V","TEMPERATURE";
 			status = "okay";
 		};
+		eeproms {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			eeprom@0 {
+				compatible = "zii,pic-eeprom";
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				status = "okay";
+
+				eeprom_format: eeprom-format@0 {
+					reg = <0x00 2>;
+				};
+				wdt_rmi: wdt-rmi@10 {
+					reg = <0x10 2>;
+				};
+				wdt_timeout: wdt-timeout@12 {
+					reg = <0x12 2>;
+				};
+			};
+		};
 	};
 };
 
