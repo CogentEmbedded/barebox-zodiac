@@ -105,7 +105,7 @@
 				};
 			};
 		};
-       };
+	};
 };
 
 &ecspi1 {
@@ -371,35 +371,41 @@
 		current-speed = <57600>;
 		status = "okay";
 
+		main_eeprom {
+			compatible = "zii,pic-main-eeprom";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			status = "okay";
+
+			eeprom_format: eeprom-format@0 {
+				reg = <0x00 2>;
+			};
+			wdt_rmi: wdt-rmi@10 {
+				reg = <0x10 2>;
+			};
+			wdt_timeout: wdt-timeout@12 {
+				reg = <0x12 2>;
+			};
+			max_failed_boots: max-failed-boots@14 {
+				reg = <0x14 2>;
+			};
+		};
+
 		watchdog {
 			compatible = "zii,pic-watchdog";
 			status = "okay";
+			nvmem-cells = <&wdt_rmi
+							&wdt_timeout>;
+
+			nvmem-cell-names = "wdt_rmi",
+								"wdt_timeout";
 		};
+
 		hwmon {
 			compatible = "zii,pic-hwmon";
 			sensors = "28V","TEMPERATURE";
 			status = "okay";
-		};
-		eeproms {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			eeprom@0 {
-				compatible = "zii,pic-eeprom";
-				#address-cells = <1>;
-				#size-cells = <1>;
-
-				status = "okay";
-
-				eeprom_format: eeprom-format@0 {
-					reg = <0x00 2>;
-				};
-				wdt_rmi: wdt-rmi@10 {
-					reg = <0x10 2>;
-				};
-				wdt_timeout: wdt-timeout@12 {
-					reg = <0x12 2>;
-				};
-			};
 		};
 	};
 };
