@@ -360,13 +360,16 @@ static int do_mii(int argc, char *argv[])
 	unsigned short data[32];
 	unsigned short data_w = 0;
 	int addr, reg;
-	struct mii_bus	*mii;
+	struct mii_bus	*mii = ERR_PTR(-ENODEV);
 
 	if (argc < 2)
 		return COMMAND_ERROR_USAGE;
 
-	if (argc >= 3)
+	if (argc >= 3) {
 		bus = simple_strtoul(argv[2], NULL, 10);
+		/* get bus */
+		mii = miiphy_get_bus(bus);
+	}
 	if (argc >= 4) {
 		extract_range(argv[3], &addrlo, &addrhi);
 		if ((addrlo >= PHY_MAX_ADDR) || (addrhi >= PHY_MAX_ADDR))
@@ -380,13 +383,10 @@ static int do_mii(int argc, char *argv[])
 	if (argc >= 6)
 		data_w = simple_strtoul(argv[5], NULL, 16);
 
-	/* get bus */
-	mii = miiphy_get_bus(bus);
-	if (IS_ERR(mii))
-		return -ENODEV;
-
 	/* read/write */
 	if (argv[1][0] == 'r') {
+		if (IS_ERR(mii))
+			return -ENODEV;
 		for (addr = addrlo; addr <= addrhi; addr++) {
 			printf("Read %d.%02x: %02x..%02x\n", bus, addr, reglo, reghi);
 			for (reg = reglo; reg <= reghi; reg++)
@@ -397,6 +397,8 @@ static int do_mii(int argc, char *argv[])
 				dump_regs(data, reglo, reghi);
 		}
 	} else if (argv[1][0] == 'w') {
+		if (IS_ERR(mii))
+			return -ENODEV;
 		if (argc < 6)
 			return COMMAND_ERROR_USAGE;
 		for (addr = addrlo; addr <= addrhi; addr++) {
@@ -407,7 +409,7 @@ static int do_mii(int argc, char *argv[])
 	} else if (argv[1][0] == 'l') {
 		printf("List of MDIO buses:\n");
 		for_each_mii_bus(mii)
-			printf(" %s%d\n", mii->dev.name, mii->dev.id);
+			printf(" %d: %s\n", mii->dev.id, dev_name(mii->dev.parent));
 	} else {
 		return COMMAND_ERROR_USAGE;
 	}
