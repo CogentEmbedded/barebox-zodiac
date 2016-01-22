@@ -20,35 +20,83 @@
 // IMS_PATCH: Runtime support of 2 different environment devices (MMC/SF) ------------
 #include <environment.h>
 
-#include "pic.h"
+#include "zii-pic-core.h"
+#include "zii-pic-niu.h"
+#include "zii-pic-mezz.h"
+#include "zii-pic-esb.h"
+#include "zii-pic-rdu.h"
+#include "zii-pic-rdu2.h"
 
 #define EEPROM_BACKUP_PAGE  20
 
 // Global flag to determine if the failed boot has already been incremented
 int bootFailureIncremented = 0;
 
-static struct console_device *pic_cdev = NULL;
+struct zii_pic_mfd *pic = NULL;
 
-void pic_uart_init(struct console_device *cdev, int speed)
+
+int pic_init(struct console_device *cdev, int speed, int hw_id)
 {
-	pic_cdev = cdev;
+	if (pic)
+		return -EEXIST;
 
-	pic_cdev->setbrg(pic_cdev, speed);
-	if (pic_cdev->flush)
-		pic_cdev->flush(pic_cdev);
+	pic = xzalloc(sizeof(*pic));
+	if (!pic)
+		return -ENOMEM;
+
+	pic->cdev = cdev;
+	pic->hw_id = hw_id;
+	switch (pic->hw_id) {
+	case PIC_HW_ID_NIU:
+		printf("PIC for NIU\n");
+		pic->cmd = zii_pic_niu_cmds;
+		pic->checksum_size = 2;
+		pic->checksum_type = N_MCU_CHECKSUM_CRC16;
+	break;
+	case PIC_HW_ID_MEZZ:
+		printf("PIC for MEZZ\n");
+		pic->cmd = zii_pic_mezz_cmds;
+		pic->checksum_size = 2;
+		pic->checksum_type = N_MCU_CHECKSUM_CRC16;
+	break;
+	case PIC_HW_ID_ESB:
+		printf("PIC for ESB\n");
+		pic->cmd = zii_pic_esb_cmds;
+		pic->checksum_size = 2;
+		pic->checksum_type = N_MCU_CHECKSUM_CRC16;
+	break;
+	case PIC_HW_ID_RDU:
+		printf("PIC for RDU\n");
+		pic->cmd = zii_pic_rdu_cmds;
+		pic->checksum_size = 1;
+		pic->checksum_type = N_MCU_CHECKSUM_8B2C;
+	break;
+	case PIC_HW_ID_RDU2:
+		printf("PIC for RDU2\n");
+		pic->cmd = zii_pic_rdu2_cmds;
+		pic->checksum_size = 2;
+		pic->checksum_type = N_MCU_CHECKSUM_CRC16;
+	break;
+	}
+
+	pic->cdev->setbrg(pic->cdev, speed);
+	if (pic->cdev->flush)
+		pic->cdev->flush(pic->cdev);
+
+	return 0;
 }
 
 void pic_putc(char c)
 {
-	pic_cdev->putc(pic_cdev, c);
+	pic->cdev->putc(pic->cdev, c);
 }
 
 int pic_getc(char chan, char *c)
 {
 	int timeout = 1000; /* 1 mS */
 	while (timeout > 0) {
-		if (pic_cdev->tstc(pic_cdev)) {
-			*c = pic_cdev->getc(pic_cdev);
+		if (pic->cdev->tstc(pic->cdev)) {
+			*c = pic->cdev->getc(pic->cdev);
 			return 1;
 		}
 		udelay(100);
@@ -60,8 +108,8 @@ int pic_getc(char chan, char *c)
 void pic_reset_comms(void)
 {
 	/* flush input */
-	while (pic_cdev->tstc(pic_cdev))
-		pic_cdev->getc(pic_cdev);
+	while (pic->cdev->tstc(pic->cdev))
+		pic->cdev->getc(pic->cdev);
 	pic_putc('\x03');
 	pic_putc('\x03');
 	pic_putc('\x03');
@@ -91,6 +139,29 @@ static unsigned char pic_calc_checksum(const unsigned char * in, int len)
 	return 0x100 - sum;
 }
 
+uint16_t UpdateCrc16_CCITT(uint16_t prevValue, uint8_t nextByte)
+{
+	unsigned crc_new = (uint8_t)(prevValue >> 8) | (prevValue << 8);
+	crc_new ^= nextByte;
+	crc_new ^= (uint8_t)(crc_new & 0xff) >> 4;
+	crc_new ^= crc_new << 12;
+	crc_new ^= (crc_new & 0xff) << 5;
+
+	return crc_new;
+}
+
+// Calculates CCITT CRC16 of the buffer and returns
+uint16_t CalculateCrc16_CCITT(const uint8_t * buf, uint32_t len)
+{
+	uint32_t x = 0;
+	//Initialize the crc value
+	uint16_t crc = 0xFFFF;
+
+	for(x = 0; x < len; x++)
+		crc = UpdateCrc16_CCITT(crc, buf[x]);
+
+	return ((crc >> 8) | ((crc << 8) & 0xFF00)) ;
+}
 
 int pic_ack_id = 0;
 // Packs message into pic packet
@@ -100,6 +171,7 @@ static int pic_pack_msg(unsigned char *out, const unsigned char *in, char msg_ty
 	unsigned char checksum;
 	unsigned char temp[256];
 	unsigned char *out_temp = out;
+	uint16_t crc16 = 0;
 	int i = 0;
 
 	// Pack ack, data, and checksum into temp structure,
@@ -111,9 +183,23 @@ static int pic_pack_msg(unsigned char *out, const unsigned char *in, char msg_ty
 		i += len;
 	}
 
-	checksum = pic_calc_checksum(temp, i);
+	switch(pic->checksum_type) {
+	case N_MCU_CHECKSUM_8B2C:
+		// Calculate the checksum
+		checksum = pic_calc_checksum(temp, i);
 
-	temp[i++] = checksum;
+		// Store the checksum
+		temp[i++] = checksum;
+	break;
+	case N_MCU_CHECKSUM_CRC16:
+		// Calculate CRC
+		crc16 = CalculateCrc16_CCITT(temp, i);
+
+		// Store CRC
+		temp[i++] = (uint8_t)(crc16 & 0x00FF);
+		temp[i++] = (uint8_t)(crc16 >> 8);
+	break;
+	}
 
 	*out_temp++ = STX;
 	out_temp += pic_escape_data(out_temp, temp, i);
@@ -150,7 +236,11 @@ int pic_recv_msg(unsigned char *out)
 	int escaped = 0;
 	int receiving = 0;
 	unsigned char cksum = 0;
+	uint16_t calculatedCrc = 0;
+	uint16_t storedCrc = 0;
+	int numReceivedBytes;
 	int cnt = 0;
+	int i;
 
 	while(1) {
 		if (--time == 0) {
@@ -189,20 +279,108 @@ int pic_recv_msg(unsigned char *out)
 		}
 	}
 
-	if (cksum != 0)	{
-		printf("Checksum is %02X instead of zero -- packet dropped\n", cksum);
-		return -1;
-	}
-
 	if (timeout) {
 		printf("pic_recv_message timeout with %d chars received\n", out_temp - out);
 		return -1;
 	}
 
-	return out_temp - out;
+	numReceivedBytes = out_temp - out;
+	switch(pic->checksum_type) {
+	case N_MCU_CHECKSUM_8B2C:
+		// Calculate the checksum
+		if (cksum != 0)	{
+			printf("Checksum is %02X instead of zero -- packet dropped\n", cksum);
+			return -1;
+		}
+	break;
+	case N_MCU_CHECKSUM_CRC16:
+		// Calculate CRC
+		calculatedCrc = CalculateCrc16_CCITT(out, numReceivedBytes - 2);
+		// Get CRC
+		storedCrc  = out[numReceivedBytes - 2];
+		storedCrc |= (out[numReceivedBytes - 1] << 8);
+		if(storedCrc != calculatedCrc) {
+			printf("Expected CRC is 0x%X, received CRC is 0x%X  -- packet dropped\n", calculatedCrc, storedCrc);
+			return -1;
+		}
+	break;
+	}
+
+	printk("got %d bytes: ", numReceivedBytes);
+	for (i = 0; i < numReceivedBytes; i++)
+		printk("%02x ", out[i]);
+	printk("\n");
+
+	return numReceivedBytes;
 }
 
+int zii_pic_mcu_cmd(struct zii_pic_mfd *adev,
+		enum zii_pic_cmd_id id, const u8 * const data, u8 data_size)
+{
+	int len;
+	unsigned char recv_data[ZII_PIC_CMD_MAX_SIZE];
 
+	pr_debug("%s: enter\n", __func__);
+
+	if (unlikely(!adev->cmd[id].cmd_id)) {
+		pr_warn("%s: command: %d not implemented\n", __func__, id);
+		return 0;
+	}
+
+	if (unlikely(data_size != adev->cmd[id].data_len))
+		return -EINVAL;
+
+	pic_send_msg(data, adev->cmd[id].cmd_id, data_size);
+#ifdef DEBUG
+	print_hex_dump(KERN_DEBUG, "cmd data: ", DUMP_PREFIX_OFFSET,
+			16, 1, mcu_cmd.data, mcu_cmd.size, true);
+#endif
+
+	pic_reset_comms();
+	len = pic_recv_msg(recv_data);
+	if (len <= 0)
+		return 1;
+#ifdef DEBUG
+	print_hex_dump(KERN_DEBUG, "response data: ", DUMP_PREFIX_OFFSET,
+			16, 1, mcu_cmd.data, mcu_cmd.size, true);
+#endif
+
+	/* check if it is our response */
+	if (pic_ack_id != recv_data[1])
+		return -EAGAIN;
+
+	/* now cmd data contains response */
+	if (adev->cmd[id].response_handler)
+		/* do not show header and checksum to handler */
+		return adev->cmd[id].response_handler(
+				adev,
+				&recv_data[2],
+				len - 2 - adev->checksum_size);
+
+	return 0;
+}
+
+static int zii_pic_mcu_cmd_no_response(struct zii_pic_mfd *adev,
+		enum zii_pic_cmd_id id, const u8 * const data, u8 data_size)
+{
+	pr_debug("%s: enter\n", __func__);
+
+	if (unlikely(!adev->cmd[id].cmd_id))
+		return -ENOENT;
+
+	if (unlikely(data_size != adev->cmd[id].data_len))
+		return -EINVAL;
+
+#ifdef DEBUG
+	print_hex_dump(KERN_DEBUG, "cmd data: ", DUMP_PREFIX_OFFSET,
+			16, 1, mcu_cmd.data, mcu_cmd.size, true);
+#endif
+
+	pic_reset_comms();
+	pic_send_msg(data, adev->cmd[id].cmd_id, data_size);
+
+	return 0;
+}
 
 /********************************************************************
  * Function:        int GetEepromData(uint16_t pageNum, uint8_t *data)
@@ -372,7 +550,7 @@ int do_pic_set_lcd(int argc, char *argv[])
 		return 0;
 	}
 */
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 4)
 		return COMMAND_ERROR_USAGE;
@@ -401,7 +579,7 @@ int do_pic_en_lcd(int argc, char *argv[])
 	unsigned char data[64];
 	int len;
 
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
@@ -419,7 +597,7 @@ int do_pic_en_usb(int argc, char *argv[])
 	unsigned char data[64];
 	int len;
 
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
@@ -434,7 +612,7 @@ int do_pic_en_usb(int argc, char *argv[])
 
 static int pic_get_status(unsigned char *data)
 {
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 
 	pic_reset_comms();
@@ -525,6 +703,9 @@ int do_pic_temp_2(int argc, char *argv[])
 
 int do_pic_get_fw(int argc, char *argv[])
 {
+	int ret = 0;
+	struct pic_version *ver;
+/*
 	unsigned char data[64];
 	int len;
 
@@ -535,15 +716,26 @@ int do_pic_get_fw(int argc, char *argv[])
 	if (len < 0)
 		return len;
 
-	/* FW */
+	// FW
 	printf("FW: %02d.%02d%02d.%02d.%c%c\n",
 		data[8], data[9], data[10], data[11], data[12], data[13]);
+*/
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_FIRMWARE_VERSION, NULL, 0);
+	if (ret == 0) {
+		ver = &pic->firmware_version;
+		printf("FW: %02d.%04d.%02d.%c%c\n",
+			ver->hw, ver->major, ver->minor,
+			ver->letter_1, ver->letter_2);
+	}
 
 	return 0;
 }
 
 int do_pic_get_bl(int argc, char *argv[])
 {
+	int ret = 0;
+	struct pic_version *ver;
+/*
 	unsigned char data[64];
 	int len;
 
@@ -554,9 +746,17 @@ int do_pic_get_bl(int argc, char *argv[])
 	if (len < 0)
 		return len;
 
-	/* BL */
+	// BL
 	printf("BL: %02d.%02d%02d.%02d.%c%c\n",
 		data[2], data[3], data[4], data[5], data[6], data[7]);
+*/
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_BOOTLOADER_VERSION, NULL, 0);
+	if (ret == 0) {
+		ver = &pic->bootloader_version;
+		printf("BL: %02d.%04d%.02d.%c%c\n",
+			ver->hw, ver->major, ver->minor,
+			ver->letter_1, ver->letter_2);
+	}
 
 	return 0;
 }
@@ -605,7 +805,7 @@ int do_pic_get_rev(int argc, char *argv[])
 	unsigned char data[64];
 	int len;
 
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
@@ -628,7 +828,7 @@ int do_pic_reset(int argc, char *argv[])
 	unsigned char data[64];
 	int len;
 
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
@@ -659,7 +859,7 @@ int do_pic_get_reset (int argc, char *argv[])
 	}
 */
 
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
@@ -842,7 +1042,7 @@ int do_pic_pet_wdt (int argc, char *argv[])
 		return 0;
 	}
 */
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
@@ -883,7 +1083,7 @@ int do_pic_set_wdt (int argc, char *argv[])
 		return 0;
 	}
 */
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if ((argc != 2) && (argc != 3))
 		return COMMAND_ERROR_USAGE;
@@ -976,7 +1176,7 @@ int do_pic_get_boot_device (int argc, char *argv[])
 		return 0;
 	}
 */
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
@@ -1049,7 +1249,7 @@ int do_pic_set_boot_device (int argc, char *argv[]) {
 		return 0;
 	}
 */
-	if (!pic_cdev)
+	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 2)
 		return COMMAND_ERROR_USAGE;

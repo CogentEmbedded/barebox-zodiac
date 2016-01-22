@@ -44,6 +44,7 @@
 #include <mach/devices-imx51.h>
 #include <mach/revision.h>
 #include <mach/imx-flash-header.h>
+#include <zii/pic.h>
 
 #define MX51_CCM_CACRR 0x10
 
@@ -153,23 +154,30 @@ static void zodiac_power_init(struct mc13xxx *mc13xxx)
 	clock_notifier_call_chain();
 }
 
+int pic_type = -1;
+
 static int imx51_zodiac_init(void)
 {
 	if (of_machine_is_compatible("fsl,imx51-zodiac-niu")) {
 		barebox_set_hostname("zodiac_niu");
 		barebox_set_model("NIU rev A");
+		pic_type = PIC_HW_ID_NIU;
 	} else if (of_machine_is_compatible("fsl,imx51-zodiac-mezz")) {
 		barebox_set_hostname("zodiac_mezz");
 		barebox_set_model("SCU Mezzanine");
+		pic_type = PIC_HW_ID_MEZZ;
 	} else if (of_machine_is_compatible("fsl,imx51-zodiac-esb")) {
 		barebox_set_hostname("zodiac_esb");
 		barebox_set_model("ESB");
+		pic_type = PIC_HW_ID_ESB;
 	} else if (of_machine_is_compatible("fsl,imx51-zodiac-rdu-c")) {
 		barebox_set_hostname("zodiac_rdu_c");
 		barebox_set_model("RDU Rev C (or greater)");
+		pic_type = PIC_HW_ID_RDU;
 	} else if (of_machine_is_compatible("fsl,imx51-zodiac-rdu-b")) {
 		barebox_set_hostname("zodiac_rdu_b");
 		barebox_set_model("RDU Rev B");
+		pic_type = PIC_HW_ID_RDU;
 	}
 
 	mc13xxx_register_init_callback(zodiac_power_init);
@@ -186,16 +194,18 @@ coredevice_initcall(imx51_zodiac_init);
 
 #ifdef CONFIG_CMD_ZODIAC_PIC
 
-extern void pic_uart_init(struct console_device *cdev, int speed);
-
 static int imx51_zodiac_lateinit(void)
 {
 	struct console_device *cdev;
+
+	if (pic_type < 0)
+		return 0;
+
 	for_each_console(cdev) {
 		if (!(strcmp(cdev->devname, "serial2"))) {
 			printf("Init PIC on %s\n", cdev->devname);
 
-			pic_uart_init(cdev, 38400);
+			pic_init(cdev, 38400, pic_type);
 		}
 	}
 
