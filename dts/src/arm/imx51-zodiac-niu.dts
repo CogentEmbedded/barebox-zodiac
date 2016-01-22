@@ -105,7 +105,61 @@
 				};
 			};
 		};
-       };
+	};
+
+	nameplate {
+		compatible = "zii,nameplate";
+		status = "okay";
+
+		proc-path = "rave";
+
+		nvmem-cells = <&lru_part_number
+			&lru_serial_number
+			&lru_date_of_manufacture
+			&lru_mod
+			&board_part_number
+			&board_serial_number
+			&board_date_of_manufacture
+			&board_initial_rev
+			&board_update_dom
+			&board_update_rev
+			/*&if_board_part_number
+			&if_board_serial_number
+			&if_board_date_of_manufacture
+			&if_board_initial_rev
+			&if_board_update_dom
+			&if_board_update_rev
+			&if_mod
+			&if_lru_identifier*/>;
+		nvmem-cell-names = "lru_part_number",
+			"lru_serial_number",
+			"lru_date_of_manufacture",
+			"lru_mod",
+			"board_part_number",
+			"board_serial_number",
+			"board_date_of_manufacture",
+			"board_initial_rev",
+			"board_update_dom",
+			"board_update_rev"/*,
+			"if_board_part_number",
+			"if_board_serial_number",
+			"if_board_date_of_manufacture",
+			"if_board_initial_rev",
+			"if_board_update_dom",
+			"if_board_update_rev",
+			"if_mod",
+			"if_lru_identifier"*/;
+		strings = "lru_part_number",
+			"lru_serial_number",
+			"lru_date_of_manufacture",
+			"board_part_number",
+			"board_serial_number",
+			"board_date_of_manufacture",
+			"board_initial_rev",
+			"board_update_dom",
+			"board_update_rev";
+		integers = "lru_mod";
+	};
 };
 
 &ecspi1 {
@@ -328,12 +382,58 @@
 		reg = <0x48>;
 	};
 
+	/* main board nameplate */
 	eeprom@50 {
 		compatible = "atmel,24c04";
 		pagesize = <16>;
 		reg = <0x50>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		lru_part_number: lru-part-number@0 {
+			/* 20 @ 0 */
+			reg = <0x00 0x14>;
+		};
+		lru_serial_number: lru-serial-number@14 {
+			/* 10 @ 20 */
+			reg = <0x14 0x0a>;
+		};
+		lru_date_of_manufacture: lru-date-of-manufacture@1e {
+			/* 7 @ 30 */
+			reg = <0x1e 0x07>;
+		};
+		lru_mod: lru-mod@25 {
+			/* 4 @ 37 */
+			reg = <0x25 0x04>;
+		};
+		board_part_number: board-part-number@29 {
+			/* 10 @ 41 */
+			reg = <0x29 0x0a>;
+		};
+		board_serial_number: board-serial-number@33 {
+			/* 10 @ 51 */
+			reg = <0x33 0x0a>;
+		};
+		board_date_of_manufacture: board-date-of-manufacture@3d {
+			/* 5 @ 61 */
+			reg = <0x3d 0x05>;
+		};
+		board_initial_rev: board-initial-rev@42 {
+			/* 5 @ 66 */
+			reg = <0x42 0x05>;
+		};
+		board_update_dom: board-update-dom@47 {
+			/* 5 @ 71 */
+			reg = <0x47 0x05>;
+		};
+		board_update_rev: board-update-rev@4c {
+			/* 5 @ 76 */
+			reg = <0x4c 0x05>;
+		};
 	};
 
+	/* interface board nameplate */
 	eeprom@54 {
 		compatible = "atmel,24c04";
 		pagesize = <16>;
