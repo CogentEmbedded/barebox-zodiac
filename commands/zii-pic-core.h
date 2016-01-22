@@ -1,15 +1,11 @@
-//*****************************************************************************
-//
-// Disclosure:
-// Copyright(C) 2010 Systems and Software Enterprises, Inc. (dba IMS)
-// ALL RIGHTS RESERVED.
-// The contents of this medium may not be reproduced in whole or part without
-// the written consent of IMS, except as authorized by section 117 of the U.S.
-// Copyright law.
-//*****************************************************************************
+#ifndef _ZII_PIC_CORE_H_
+#define _ZII_PIC_CORE_H_
 
-#ifndef CMD_PIC_H_
-#define CMD_PIC_H_
+#include <zii/pic.h>
+
+/**********************************
+***************clean this *********
+**********************************/
 
 
 #define SOH 0x01
@@ -23,6 +19,10 @@
 #define CAN 0x18
 #define EOF 0x1A        /* ^Z for DOS officionados */
 
+typedef enum {
+	msgErrorDetectionType_Checksum = 0,
+	msgErrorDetectionType_Crc
+} msgErrorDetectionType_E;
 
 // Message ID values supported by the PIC
 //   This enum is taken without modification from:
@@ -191,4 +191,148 @@ enum bootProgress {
 
 #define SPI_NOR_SHADOW_SIZE_BYTES       1024
 
-#endif /* CMD_PIC_H_ */
+/**********************************
+***************clean this *********
+***************end*****************
+**********************************/
+
+
+typedef uint8_t		u8;
+typedef uint16_t	u16;
+typedef uint32_t	u32;
+
+#define ZII_PIC_EEPROM_PAGE_SIZE	32
+#define ZII_PIC_CMD_MAX_SIZE		64
+
+/* sequential list of all commands on all HW variants */
+enum zii_pic_cmd_id {
+	ZII_PIC_CMD_GET_STATUS,
+
+	/* Watchdog and reset */
+	ZII_PIC_CMD_SW_WDT_SET,
+	ZII_PIC_CMD_SW_WDT_GET,
+	ZII_PIC_CMD_PET_WDT,
+	ZII_PIC_CMD_RESET,
+	ZII_PIC_CMD_HW_RECOVERY_RESET,
+	ZII_PIC_CMD_GET_RESET_REASON,
+
+	/* HWMON sensors */
+	ZII_PIC_CMD_GET_28V_READING,
+	ZII_PIC_CMD_GET_12V_READING,
+	ZII_PIC_CMD_GET_5V_READING,
+	ZII_PIC_CMD_GET_3V3_READING,
+	ZII_PIC_CMD_GET_TEMPERATURE,
+
+	/* Main EEPROM */
+	ZII_PIC_CMD_EEPROM_READ,
+	ZII_PIC_CMD_EEPROM_WRITE,
+
+	/* Board specific variants */
+	ZII_PIC_CMD_GET_FIRMWARE_VERSION,
+	ZII_PIC_CMD_GET_BOOTLOADER_VERSION,
+
+	ZII_PIC_CMD_DDS_EEPROM_READ,
+	ZII_PIC_CMD_DDS_EEPROM_WRITE,
+
+	/* last one to get amount of supported commands */
+	ZII_PIC_CMD_COUNT
+};
+
+#define N_MCU_CHECKSUM_NONE    0 /* Checksum is not calculated */
+#define N_MCU_CHECKSUM_CRC16   1 /* CCITT CRC16 */
+#define N_MCU_CHECKSUM_8B2C    2 /* 8-bit 2's complement */
+
+/* HWMON API */
+enum zii_pic_sensor {
+	ZII_PIC_SENSOR_FIRST,
+
+	ZII_PIC_SENSOR_28V = ZII_PIC_SENSOR_FIRST,
+	ZII_PIC_SENSOR_12V,
+	ZII_PIC_SENSOR_5V,
+	ZII_PIC_SENSOR_3V3,
+
+	ZII_PIC_SENSOR_TEMPERATURE,
+	ZII_PIC_SENSOR_TEMPERATURE_2,
+
+	ZII_PIC_SENSOR_BACKLIGHT_CURRENT,
+
+	ZII_PIC_SENSORS_COUNT
+};
+
+enum pic_state {
+	PIC_STATE_UNKNOWN,
+	PIC_STATE_OPENED,
+	PIC_STATE_CONFIGURED
+};
+
+struct pic_version {
+	u8	hw;
+	u16	major;
+	u8	minor;
+	u8	letter_1;
+	u8	letter_2;
+} __packed;
+
+/*
+ * @cmd_seqn: PIC command sequence number
+ */
+struct pic_cmd_desc;
+struct zii_pic_mfd {
+	struct device			*dev;
+	const struct attribute_group	**groups;
+	enum pic_hw_id			hw_id;
+	u8				checksum_size;
+	int				checksum_type;
+
+	int				cmd_seqn;
+	struct pic_cmd_desc		*cmd;
+	struct console_device 		*cdev;
+	//struct n_mcu_ops		mcu_ops;
+
+	enum pic_state			state;
+	long				port_fd;
+	//struct delayed_work		state_work;
+	struct tty_struct		*tty;
+	//speed_t				baud;
+
+	u8				watchdog_timeout;
+	u8				watchdog_enabled;
+	u8				reset_reason;
+
+	u8				orientation;
+	bool				stowed;
+
+	int				sensor_28v;
+	int				sensor_12v;
+	int				sensor_5v;
+	int				sensor_3v3;
+	int				temperature;
+	int				temperature_2;
+	int				backlight_current;
+
+	struct pic_version		bootloader_version;
+	struct pic_version		firmware_version;
+
+	u8				eeprom_page[ZII_PIC_EEPROM_PAGE_SIZE];
+
+	int (*uart_open)(struct tty_struct * tty, struct file * filp);
+};
+
+typedef int (*zii_pic_handler_t)(struct zii_pic_mfd *adev,
+					u8 *data, u8 size);
+struct pic_cmd_desc {
+	u8			cmd_id;
+	u8			data_len; /* without header (cmd id, ack) and CRC */
+	zii_pic_handler_t	response_handler;
+};
+
+static inline int zii_pic_f88_to_int(u8 *data)
+{
+	return data[1] * 1000 + (data[0] * 1000 >> 8);
+}
+
+int zii_pic_mcu_cmd(struct zii_pic_mfd *adev,
+		enum zii_pic_cmd_id id, const u8 * const data, u8 data_size);
+
+
+#endif /* _ZII_PIC_CORE_H_ */

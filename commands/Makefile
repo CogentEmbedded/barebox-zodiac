@@ -121,4 +121,6 @@ obj-$(CONFIG_CMD_MMC_EXTCSD)	+= mmc_extcsd.o
 obj-$(CONFIG_CMD_NAND_BITFLIP)	+= nand-bitflip.o
 obj-$(CONFIG_CMD_MMDC)		+= mmdc.o
 
-obj-$(CONFIG_CMD_ZODIAC_PIC)	+= pic.o
+obj-$(CONFIG_CMD_ZODIAC_PIC)	+= pic.o zii-pic-esb.o \
+				zii-pic-mezz.o zii-pic-niu.o \
+				zii-pic-rdu.o zii-pic-rdu2.o
