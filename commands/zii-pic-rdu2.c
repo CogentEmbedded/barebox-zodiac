@@ -58,7 +58,7 @@ struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
 	/* ZII_PIC_CMD_GET_3V3_READING */
 	{0, 0, NULL},
 	/* ZII_PIC_CMD_GET_TEMPERATURE */
-	{0, 0, NULL},
+	{0x26, 1, zii_pic_rdu2_process_temp},
 	/* ZII_PIC_CMD_EEPROM_READ */
 	{0xA4, 3, zii_pic_rdu2_process_eeprom_read},
 	/* ZII_PIC_CMD_EEPROM_WRITE */
@@ -122,6 +122,22 @@ int zii_pic_rdu2_process_28v(struct zii_pic_mfd *adev,
 		return -EINVAL;
 
 	adev->sensor_28v = zii_pic_f88_to_int(data);
+
+	return 0;
+}
+
+int zii_pic_rdu2_process_temp(struct zii_pic_mfd *adev,
+		u8 *data, u8 size)
+{
+	pr_debug("%s: enter\n", __func__);
+
+	/* bad response, ignore */
+	if (size != 2) {
+		printf("invalid size %d\n", size);
+		//return -EINVAL;
+	}
+
+	adev->temp = data[0] << 8 | data[1];
 
 	return 0;
 }
