@@ -314,6 +314,7 @@ struct zii_pic_mfd {
 	int				ec;
 	int				rdu_rev;
 	int				dds_rev;
+	int				temp;
 
 	struct pic_version		bootloader_version;
 	struct pic_version		firmware_version;

@@ -51,6 +51,9 @@ int zii_pic_rdu2_process_reset_reason(struct zii_pic_mfd *adev,
 int zii_pic_rdu2_process_28v(struct zii_pic_mfd *adev,
 		u8 *data, u8 size);
 
+int zii_pic_rdu2_process_temp(struct zii_pic_mfd *adev,
+		u8 *data, u8 size);
+
 int zii_pic_rdu2_process_firmware_version(struct zii_pic_mfd *adev,
 		u8 *data, u8 size);
 

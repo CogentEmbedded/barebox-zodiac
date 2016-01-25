@@ -16,6 +16,7 @@
 #include <command.h>
 #include <errno.h>
 #include <net.h>
+#include <hwmon.h>
 
 // IMS_PATCH: Runtime support of 2 different environment devices (MMC/SF) ------------
 #include <environment.h>
@@ -29,10 +30,54 @@
 
 #define EEPROM_BACKUP_PAGE  20
 
+#define MAX_HWMON_NAME	10
+
 // Global flag to determine if the failed boot has already been incremented
 int bootFailureIncremented = 0;
 
 struct zii_pic_mfd *pic = NULL;
+
+/* Each hwmon node has this additional data */
+struct pic_hwmon_data {
+	struct zii_pic_mfd 	*pic;
+	struct hwmon_sensor	sensor;
+	int			n;
+};
+
+static int pic_hwmon_read(struct hwmon_sensor *sensor, s32 *reading);
+
+static inline struct pic_hwmon_data *to_pic_data(struct hwmon_sensor *sensor)
+{
+	return container_of(sensor, struct pic_hwmon_data, sensor);
+}
+
+int pic_hwmon_reg(struct zii_pic_mfd *adev, int n)
+{
+	int i;
+	int err;
+	struct pic_hwmon_data *data;
+
+	for (i = 0; i < n; i++) {
+		data = xzalloc(sizeof(struct pic_hwmon_data));
+		if (!data)
+			return -ENOMEM;
+
+		data->pic = adev;
+		data->n = i;
+
+		data->sensor.name = (const void *)xzalloc(MAX_HWMON_NAME);
+		snprintf((char *)data->sensor.name, MAX_HWMON_NAME, "pic_t%d", i);
+		data->sensor.read = pic_hwmon_read;
+
+		err = hwmon_sensor_register(&data->sensor);
+		if (err) {
+			free((void *)data->sensor.name);
+			free(data);
+			return err;
+		}
+	}
+	return 0;
+}
 
 
 int pic_init(struct console_device *cdev, int speed, int hw_id)
@@ -76,6 +121,8 @@ int pic_init(struct console_device *cdev, int speed, int hw_id)
 		pic->cmd = zii_pic_rdu2_cmds;
 		pic->checksum_size = 2;
 		pic->checksum_type = N_MCU_CHECKSUM_CRC16;
+		/* register HWMON */
+		pic_hwmon_reg(pic, 2);
 	break;
 	}
 
@@ -378,6 +425,26 @@ static int zii_pic_mcu_cmd_no_response(struct zii_pic_mfd *adev,
 
 	pic_reset_comms();
 	pic_send_msg(data, adev->cmd[id].cmd_id, data_size);
+
+	return 0;
+}
+
+
+
+static int pic_hwmon_read(struct hwmon_sensor *sensor, s32 *reading)
+{
+	int ret;
+	uint8_t data[1];
+	struct pic_hwmon_data *pic_hw = to_pic_data(sensor);
+
+	data[0] = pic_hw->n;
+
+	/* update status data */
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_TEMPERATURE, data, 1);
+	if (ret)
+		return ret;
+
+	*reading = pic_hw->pic->temp * 500;
 
 	return 0;
 }
