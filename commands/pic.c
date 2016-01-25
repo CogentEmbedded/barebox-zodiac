@@ -623,110 +623,91 @@ static int pic_get_status(unsigned char *data)
 
 int do_pic_status(int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
-	s16 temp1, temp2;
+	int ret;
+	struct pic_version *ver;
 
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	len = pic_get_status(data);
-	if (len < 0)
-		return len;
+	/* update status data */
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_STATUS, NULL, 0);
+	if (ret)
+		return ret;
 
 	/* BL */
-	printf("BL: %02d.%02d%02d.%02d.%c%c\n",
-		data[2], data[3], data[4], data[5], data[6], data[7]);
+	ver = &pic->bootloader_version;
+	printf("IMS-RAV-R2AX-%02d.%04d%.02d.%c%c\n",
+		ver->hw, ver->major, ver->minor,
+		ver->letter_1, ver->letter_2);
 	/* FW */
-	printf("FW: %02d.%02d%02d.%02d.%c%c\n",
-		data[8], data[9], data[10], data[11], data[12], data[13]);
-
+	ver = &pic->firmware_version;
+	printf("IMS-RAV-R2AX-%02d.%04d.%02d.%c%c\n",
+		ver->hw, ver->major, ver->minor,
+		ver->letter_1, ver->letter_2);
+/*
 	printf("BL: %d, %s, %d mA\n",
 		data[28] & 0x7f,
 		data[28] & 0x80 ? "en" : "dis",
 		(data[30] << 8) | data[29]);
-
-	temp1 = data[24] | data[25] << 8;
-	printf("T1 = %d.%d\n", temp1 >> 1, (temp1 & 0x01) ? 5 : 0);
-	temp2 = data[26] | data[27] << 8;
-	printf("T2 = %d.%d\n", temp2 >> 1, (temp2 & 0x01) ? 5 : 0);
+*/
+	printf("T1 = %d.%03d\n",
+		pic->temperature / 1000, pic->temperature % 1000);
+	printf("T2 = %d.%03d\n",
+		pic->temperature_2 / 1000, pic->temperature_2 % 1000);
 
 	/* power on counter in sec */
-	printf("EC: %d sec\n",
-		data[20] | (data[21] << 8) |
-		(data[22] << 16) | (data[23] << 24));
+	printf("EC: %d sec\n", pic->ec);
 
-	/* 28V fixed point 8.8 */
+	/* 28V in mV */
 	printf("28V: %d.%03d\n",
-		data[34], data[33] * 256 / 1000);
+		pic->sensor_28v / 1000, pic->sensor_28v % 1000);
 
 	return 0;
 }
 
 int do_pic_temp_1(int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
-	s16 temp1;
+	int ret;
 
-	if (argc != 1)
-		return COMMAND_ERROR_USAGE;
+	/* update status data */
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_STATUS, NULL, 0);
+	if (ret)
+		return ret;
 
-	len = pic_get_status(data);
-	if (len < 0)
-		return len;
-
-	temp1 = data[24] | data[25] << 8;
-	printf("T1 = %d.%d\n", temp1 >> 1, (temp1 & 0x01) ? 5 : 0);
+	printf("T1 = %d.%03d\n",
+		pic->temperature / 1000, pic->temperature % 1000);
 
 	return 0;
 }
 
 int do_pic_temp_2(int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
-	s16 temp2;
+	int ret;
 
-	if (argc != 1)
-		return COMMAND_ERROR_USAGE;
+	/* update status data */
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_STATUS, NULL, 0);
+	if (ret)
+		return ret;
 
-	len = pic_get_status(data);
-	if (len < 0)
-		return len;
-
-	temp2 = data[26] | data[27] << 8;
-	printf("T2 = %d.%d\n", temp2 >> 1, (temp2 & 0x01) ? 5 : 0);
+	printf("T2 = %d.%03d\n",
+		pic->temperature_2 / 1000, pic->temperature_2 % 1000);
 
 	return 0;
 }
 
 int do_pic_get_fw(int argc, char *argv[])
 {
-	int ret = 0;
+	int ret;
 	struct pic_version *ver;
-/*
-	unsigned char data[64];
-	int len;
 
-	if (argc != 1)
-		return COMMAND_ERROR_USAGE;
-
-	len = pic_get_status(data);
-	if (len < 0)
-		return len;
-
-	// FW
-	printf("FW: %02d.%02d%02d.%02d.%c%c\n",
-		data[8], data[9], data[10], data[11], data[12], data[13]);
-*/
 	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_FIRMWARE_VERSION, NULL, 0);
-	if (ret == 0) {
-		ver = &pic->firmware_version;
-		printf("FW: %02d.%04d.%02d.%c%c\n",
-			ver->hw, ver->major, ver->minor,
-			ver->letter_1, ver->letter_2);
-	}
+	if (ret)
+		return ret;
+
+	ver = &pic->firmware_version;
+	printf("IMS-RAV-R2AX-%02d.%04d.%02d.%c%c\n",
+		ver->hw, ver->major, ver->minor,
+		ver->letter_1, ver->letter_2);
 
 	return 0;
 }
@@ -735,108 +716,89 @@ int do_pic_get_bl(int argc, char *argv[])
 {
 	int ret = 0;
 	struct pic_version *ver;
-/*
-	unsigned char data[64];
-	int len;
 
-	if (argc != 1)
-		return COMMAND_ERROR_USAGE;
-
-	len = pic_get_status(data);
-	if (len < 0)
-		return len;
-
-	// BL
-	printf("BL: %02d.%02d%02d.%02d.%c%c\n",
-		data[2], data[3], data[4], data[5], data[6], data[7]);
-*/
 	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_BOOTLOADER_VERSION, NULL, 0);
-	if (ret == 0) {
-		ver = &pic->bootloader_version;
-		printf("BL: %02d.%04d%.02d.%c%c\n",
-			ver->hw, ver->major, ver->minor,
-			ver->letter_1, ver->letter_2);
-	}
+	if (ret)
+		return ret;
+
+	ver = &pic->bootloader_version;
+	printf("IMS-RAV-R2AX-%02d.%04d%.02d.%c%c\n",
+		ver->hw, ver->major, ver->minor,
+		ver->letter_1, ver->letter_2);
 
 	return 0;
 }
 
 int do_pic_get_v(int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
+	int ret;
 
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	len = pic_get_status(data);
-	if (len < 0)
-		return len;
+	/* update status data */
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_28V_READING, NULL, 0);
+	if (ret)
+		return ret;
 
-	/* 28V fixed point 8.8 */
+	/* 28V in mV */
 	printf("28V: %d.%03d\n",
-		data[34], data[33] * 256 / 1000);
+		pic->sensor_28v / 1000, pic->sensor_28v % 1000);
 
 	return 0;
 }
 
 int do_pic_get_etc(int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
+	int ret;
 
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	len = pic_get_status(data);
-	if (len < 0)
-		return len;
+	/* update status data */
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_STATUS, NULL, 0);
+	if (ret)
+		return ret;
 
 	/* power on counter in sec */
-	printf("EC: %d sec\n",
-		data[20] | (data[21] << 8) |
-		(data[22] << 16) | (data[23] << 24));
+	printf("EC: %d sec\n", pic->ec);
 
 	return 0;
 }
 
 int do_pic_get_rev(int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
+	int ret;
 
 	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	pic_reset_comms();
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_COPPER_REV, NULL, 0);
+	if (ret)
+		return ret;
 
-	pic_send_msg(NULL, CMD_REQ_COPPER_REV, 0);
-	len = pic_recv_msg(data);
-	if (len < 0)
-		return len;
-
-	printf("RDU rev: %d\n", data[2]);
-	printf("DDS rev: %d\n", data[3]);
+	printf("RDU rev: %d\n", pic->rdu_rev);
+	printf("DDS rev: %d\n", pic->dds_rev);
 
 	return 0;
 }
 
 int do_pic_reset(int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
+	int ret;
+	uint8_t data[1] = {1};
 
 	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	data[0] = 1;
-	pic_send_msg(data, CMD_PIC_RESET, 1);
-
-	len = pic_recv_msg(data);
+	ret = zii_pic_mcu_cmd_no_response(pic, ZII_PIC_CMD_RESET,
+		data, sizeof(data));
+	if (ret)
+		return ret;
 
 	return 0;
 }
@@ -844,36 +806,18 @@ int do_pic_reset(int argc, char *argv[])
 /* IMS: Add U-Boot commands to Get the Reset reason from the Microchip PIC */
 int do_pic_get_reset (int argc, char *argv[])
 {
-	unsigned char data[64];
-	int len;
-	uint32_t reason_extracted = 0;
-/*
-	// Check the platform to see if a PIC is attached
-	if (!(system_type == SYSTEM_TYPE__RDU_B ||
-		system_type == SYSTEM_TYPE__RDU_C) ) {
-
-		// All of these platforms do not have pics
-		// So just return
-		printf("*** This platform doesn't have a PIC, thus the PIC RESET command is not available ***\n");
-		return 0;
-	}
-*/
+	int ret;
 
 	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	pic_reset_comms();
+	ret = zii_pic_mcu_cmd_no_response(pic, ZII_PIC_CMD_GET_RESET_REASON, NULL, 0);
+	if (ret)
+		return ret;
 
-	pic_send_msg(data, CMD_RESET_REASON, 2);
-	len = pic_recv_msg(data);
-
-	if (len > 0)
-		reason_extracted = data[2];
-
-
-	switch (reason_extracted) {
+	switch (pic->reset_reason) {
 		case 0x0:
 			setenv ("reason","Normal_Power_off");
 			printf ("Reset Reason: Normal Power off\n");
@@ -930,7 +874,7 @@ int do_pic_get_reset (int argc, char *argv[])
 			break;
 
 		default: /* Can't happen? */
-			printf ("Reset Reason: Unknown 0x%x\n", reason_extracted);
+			printf ("Reset Reason: Unknown 0x%x\n", pic->reset_reason);
 			break;
 	}
 
