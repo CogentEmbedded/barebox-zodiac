@@ -36,7 +36,7 @@
 
 struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
 	/* ZII_PIC_CMD_GET_STATUS */
-	{0xA0, 0, zii_pic_rdu2_process_status_response},
+	{0x10, 0, zii_pic_rdu2_process_status_response},
 	/* ZII_PIC_CMD_SW_WDT_SET */
 	{0xA1, 3, NULL},
 	/* ZII_PIC_CMD_SW_WDT_GET */
@@ -48,9 +48,9 @@ struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
 	/* ZII_PIC_CMD_HW_RECOVERY_RESET  */
 	{0xA7, 2, NULL},
 	/* ZII_PIC_CMD_GET_RESET_REASON */
-	{0xA8, 0, zii_pic_rdu2_process_reset_reason},
+	{0x5f, 0, zii_pic_rdu2_process_reset_reason},
 	/* ZII_PIC_CMD_GET_28V_READING */
-	{0, 0, NULL},
+	{0x1a, 0, zii_pic_rdu2_process_28v},
 	/* ZII_PIC_CMD_GET_12V_READING */
 	{0, 0, NULL},
 	/* ZII_PIC_CMD_GET_5V_READING */
@@ -71,6 +71,8 @@ struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
 	{0xA3, 2, zii_pic_rdu2_process_dds_eeprom_read},
 	/* ZII_PIC_CMD_DDS_EEPROM_WRITE */
 	{0xA3, 34, zii_pic_rdu2_process_dds_eeprom_write},
+	/* ZII_PIC_CMD_COPPER_REV */
+	{0x28, 0, zii_pic_rdu2_process_copper},
 };
 
 int zii_pic_rdu2_process_status_response(struct zii_pic_mfd *adev,
@@ -105,12 +107,21 @@ int zii_pic_rdu2_process_reset_reason(struct zii_pic_mfd *adev,
 {
 	pr_debug("%s: enter\n", __func__);
 
-#if 0
-	/* bad response, ignore */
-	if (size != 1)
-		return -EINVAL;
-#endif
 	adev->reset_reason = *data;
+
+	return 0;
+}
+
+int zii_pic_rdu2_process_28v(struct zii_pic_mfd *adev,
+		u8 *data, u8 size)
+{
+	pr_debug("%s: enter\n", __func__);
+
+	/* bad response, ignore */
+	if (size != 2)
+		return -EINVAL;
+
+	adev->sensor_28v = zii_pic_f88_to_int(data);
 
 	return 0;
 }
@@ -180,6 +191,20 @@ int zii_pic_rdu2_process_dds_eeprom_write(struct zii_pic_mfd *adev,
 	/* check operation status */
 	if (!data[1])
 		return -EIO;
+
+	return 0;
+}
+
+int zii_pic_rdu2_process_copper(struct zii_pic_mfd *adev,
+				u8 *data, u8 size)
+{
+	pr_debug("%s: enter\n", __func__);
+
+	if (size != 2)
+		return -EINVAL;
+
+	adev->rdu_rev = data[0];
+	adev->dds_rev = data[1];
 
 	return 0;
 }
