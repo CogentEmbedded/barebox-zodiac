@@ -19,8 +19,6 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define DEBUG
-
 #include <common.h>
 
 #include "zii-pic-niu.h"

@@ -248,6 +248,16 @@ static int pic_pack_msg(unsigned char *out, const unsigned char *in, char msg_ty
 	break;
 	}
 
+#ifdef DEBUG
+	do {
+		int i2;
+		printk("%d >: ", i);
+		for (i2 = 0; i2 < i; i2++)
+			printf("%02x ", temp[i2]);
+		printf("\n");
+	} while(0);
+#endif
+
 	*out_temp++ = STX;
 	out_temp += pic_escape_data(out_temp, temp, i);
 	*out_temp++ = ETX;
@@ -256,7 +266,7 @@ static int pic_pack_msg(unsigned char *out, const unsigned char *in, char msg_ty
 }
 
 // Sends message to pic
-void pic_send_msg(const unsigned char *msg, char msg_type,int len)
+void pic_send_msg(const unsigned char *msg, char msg_type, int len)
 {
 	unsigned char out[256];
 	unsigned char *ptr;
@@ -287,7 +297,6 @@ int pic_recv_msg(unsigned char *out)
 	uint16_t storedCrc = 0;
 	int numReceivedBytes;
 	int cnt = 0;
-	int i;
 
 	while(1) {
 		if (--time == 0) {
@@ -353,10 +362,15 @@ int pic_recv_msg(unsigned char *out)
 	break;
 	}
 
-	printk("got %d bytes: ", numReceivedBytes);
-	for (i = 0; i < numReceivedBytes; i++)
-		printk("%02x ", out[i]);
-	printk("\n");
+#ifdef DEBUG
+	do {
+		int i;
+		printk("got %d bytes: ", numReceivedBytes);
+		for (i = 0; i < numReceivedBytes; i++)
+			printk("%02x ", out[i]);
+		printk("\n");
+	} while(0);
+#endif
 
 	return numReceivedBytes;
 }
