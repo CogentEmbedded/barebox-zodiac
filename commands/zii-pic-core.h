@@ -281,7 +281,6 @@ struct pic_version {
 struct pic_cmd_desc;
 struct zii_pic_mfd {
 	struct device			*dev;
-	const struct attribute_group	**groups;
 	enum pic_hw_id			hw_id;
 	u8				checksum_size;
 	int				checksum_type;
@@ -289,13 +288,10 @@ struct zii_pic_mfd {
 	int				cmd_seqn;
 	struct pic_cmd_desc		*cmd;
 	struct console_device 		*cdev;
-	//struct n_mcu_ops		mcu_ops;
 
 	enum pic_state			state;
 	long				port_fd;
-	//struct delayed_work		state_work;
 	struct tty_struct		*tty;
-	//speed_t				baud;
 
 	u8				watchdog_timeout;
 	u8				watchdog_enabled;
@@ -318,10 +314,6 @@ struct zii_pic_mfd {
 
 	struct pic_version		bootloader_version;
 	struct pic_version		firmware_version;
-
-	u8				eeprom_page[ZII_PIC_EEPROM_PAGE_SIZE];
-
-	int (*uart_open)(struct tty_struct * tty, struct file * filp);
 };
 
 typedef int (*zii_pic_handler_t)(struct zii_pic_mfd *adev,

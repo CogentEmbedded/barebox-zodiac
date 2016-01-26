@@ -19,8 +19,6 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define DEBUG
-
 #include <common.h>
 
 #include "zii-pic-niu.h"
@@ -30,7 +28,7 @@
 #define PIC_RDU_STOWAGE_MASK		0x80
 
 /* Main RDU EEPROM has same command/response structure */
-#define zii_pic_rdu2_process_eeprom_read		zii_pic_niu_process_eeprom_read
+#define zii_pic_rdu2_process_eeprom_read	zii_pic_niu_process_eeprom_read
 #define zii_pic_rdu2_process_eeprom_write	zii_pic_niu_process_eeprom_write
 
 
