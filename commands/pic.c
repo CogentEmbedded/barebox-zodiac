@@ -79,6 +79,149 @@ int pic_hwmon_reg(struct zii_pic_mfd *adev, int n)
 	return 0;
 }
 
+static ssize_t zii_eeprom_read(struct zii_pic_eeprom *eeprom,
+		char *buf, loff_t off, size_t count)
+{
+	int ret;
+	ssize_t retval = 0;
+
+	if (unlikely(!count))
+		return count;
+
+	eeprom->read_buf = buf;
+	while (count) {
+		ssize_t page;
+		unsigned char data[3];
+
+		page = off / ZII_PIC_EEPROM_PAGE_SIZE;
+		eeprom->read_skip = off % ZII_PIC_EEPROM_PAGE_SIZE;
+		eeprom->read_size = (count > ZII_PIC_EEPROM_PAGE_SIZE - eeprom->read_skip) ?
+			(ZII_PIC_EEPROM_PAGE_SIZE - eeprom->read_skip) : count;
+
+		// now send over the data
+		data[0] = 0x01; //Read data from the EEPROM
+		data[1] = (uint8_t)(page & 0x00FF);
+		data[2] = (uint8_t)((page >> 8) & 0x00FF);
+
+		if (eeprom->type == ZII_PIC_EEPROM_RDU)
+			ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_EEPROM_READ, data, 3);
+		else
+			ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_DDS_EEPROM_READ, data, 2);
+
+		if (ret)
+			return ret;
+
+		buf += eeprom->read_size;
+		off += eeprom->read_size;
+		count -= eeprom->read_size;
+		retval += eeprom->read_size;
+	}
+
+	return retval;
+}
+
+static ssize_t zii_eeprom_write(struct zii_pic_eeprom *eeprom,
+		const char *buf, loff_t off, size_t count)
+{
+	int ret;
+	int skip, size;
+	ssize_t retval = 0;
+	unsigned char data[3 + ZII_PIC_EEPROM_PAGE_SIZE];
+
+	if (unlikely(!count))
+		return count;
+
+	while (count) {
+		ssize_t page;
+
+		page = off / ZII_PIC_EEPROM_PAGE_SIZE;
+		skip = off % ZII_PIC_EEPROM_PAGE_SIZE;
+		size = (count > ZII_PIC_EEPROM_PAGE_SIZE - skip) ?
+			(ZII_PIC_EEPROM_PAGE_SIZE - skip) : count;
+
+		/* preload? */
+		if ((skip) || (size != ZII_PIC_EEPROM_PAGE_SIZE)) {
+			eeprom->read_buf = &data[3];
+			eeprom->read_skip = 0;
+			eeprom->read_size = ZII_PIC_EEPROM_PAGE_SIZE;
+
+			// now send over the data
+			data[0] = 0x01; //Read data from the EEPROM
+			data[1] = (uint8_t)(page & 0x00FF);
+			data[2] = (uint8_t)((page >> 8) & 0x00FF);
+
+			if (eeprom->type == ZII_PIC_EEPROM_RDU)
+				ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_EEPROM_READ, data, 3);
+			else
+				ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_DDS_EEPROM_READ, data, 2);
+
+			if (ret)
+				return ret;
+		}
+		/* copy over */
+		memcpy(&data[3] + skip, buf, size);
+
+		data[0] = 0x00; //Write data to the EEPROM
+		data[1] = (uint8_t)(page & 0x00FF);
+		data[2] = (uint8_t)((page >> 8) & 0x00FF);
+		if (eeprom->type == ZII_PIC_EEPROM_RDU)
+			ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_EEPROM_WRITE, data, 3 + ZII_PIC_EEPROM_PAGE_SIZE);
+		else
+			ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_DDS_EEPROM_WRITE, data, 2 + ZII_PIC_EEPROM_PAGE_SIZE);
+
+		buf += size;
+		off += size;
+		count -= size;
+		retval += size;
+	}
+
+	return retval;
+}
+
+static ssize_t pic_eeprom_cdev_read(struct cdev *cdev, void *buf, size_t count,
+		loff_t off, ulong flags)
+{
+	struct zii_pic_eeprom *eeprom = cdev->priv;
+
+	return zii_eeprom_read(eeprom, buf, off, count);
+}
+
+static ssize_t pic_eeprom_cdev_write(struct cdev *cdev, const void *buf, size_t count,
+		loff_t off, ulong flags)
+{
+	struct zii_pic_eeprom *eeprom = cdev->priv;
+
+	return zii_eeprom_write(eeprom, buf, off, count);
+}
+
+int pic_eeprom_reg(struct zii_pic_mfd *adev, int type)
+{
+	struct zii_pic_eeprom *eeprom = xzalloc(sizeof(struct zii_pic_eeprom));
+
+	adev->eeprom[type] = eeprom;
+	eeprom->cdev.priv = eeprom;
+	eeprom->cdev.ops = &eeprom->fops;
+	eeprom->fops.lseek = dev_lseek_default;
+	eeprom->fops.read = pic_eeprom_cdev_read;
+	eeprom->fops.write = pic_eeprom_cdev_write;
+	eeprom->type = type;
+	eeprom->pic = adev;
+	if (eeprom->type == ZII_PIC_EEPROM_RDU) {
+		eeprom->cdev.size =
+			ZII_PIC_EEPROM_PAGE_SIZE * ZII_PIC_EEPROM_PAGE_COUNT;
+		eeprom->cdev.name = asprintf("pic_eeprom_rdu");
+	}
+	else {
+		eeprom->cdev.size =
+			ZII_PIC_EEPROM_PAGE_SIZE * ZII_PIC_EEPROM_DDS_PAGE_COUNT;
+		eeprom->cdev.name = asprintf("pic_eeprom_dds");
+	}
+
+	devfs_create(&eeprom->cdev);
+
+	return 0;
+}
+
 
 int pic_init(struct console_device *cdev, int speed, int hw_id)
 {
@@ -123,6 +266,9 @@ int pic_init(struct console_device *cdev, int speed, int hw_id)
 		pic->checksum_type = N_MCU_CHECKSUM_CRC16;
 		/* register HWMON */
 		pic_hwmon_reg(pic, 2);
+		/* register eeproms */
+		pic_eeprom_reg(pic, ZII_PIC_EEPROM_DDS);
+		pic_eeprom_reg(pic, ZII_PIC_EEPROM_RDU);
 	break;
 	}
 

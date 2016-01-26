@@ -202,6 +202,9 @@ typedef uint16_t	u16;
 typedef uint32_t	u32;
 
 #define ZII_PIC_EEPROM_PAGE_SIZE	32
+#define ZII_PIC_EEPROM_PAGE_COUNT	512
+#define ZII_PIC_EEPROM_DDS_PAGE_COUNT	256
+
 #define ZII_PIC_CMD_MAX_SIZE		64
 
 /* sequential list of all commands on all HW variants */
@@ -275,6 +278,28 @@ struct pic_version {
 	u8	letter_2;
 } __packed;
 
+struct zii_pic_mfd;
+struct zii_pic_eeprom {
+	struct zii_pic_mfd		*pic;
+	/* eeprom */
+	struct cdev			cdev;
+	struct file_operations		fops;
+	int 				type;
+
+	/* buffer to copy readed data */
+	u8				*read_buf;
+	/* skip first bytes from input buffer */
+	int				read_skip;
+	/* useful data size */
+	int				read_size;
+};
+
+enum pic_eeprom_type {
+	ZII_PIC_EEPROM_DDS,
+	ZII_PIC_EEPROM_RDU,
+	ZII_PIC_EEPROM_COUNT
+};
+
 /*
  * @cmd_seqn: PIC command sequence number
  */
@@ -288,6 +313,8 @@ struct zii_pic_mfd {
 	int				cmd_seqn;
 	struct pic_cmd_desc		*cmd;
 	struct console_device 		*cdev;
+
+	struct zii_pic_eeprom		*eeprom[ZII_PIC_EEPROM_COUNT];
 
 	enum pic_state			state;
 	long				port_fd;
