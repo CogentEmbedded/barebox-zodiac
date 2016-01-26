@@ -261,7 +261,7 @@ int zii_pic_niu_process_bootloader_version(struct zii_pic_mfd *adev,
 int zii_pic_niu_process_eeprom_read(struct zii_pic_mfd *adev,
 				u8 *data, u8 size)
 {
-	struct zii_pic_eeprom *eeprom = adev->eeprom[ZII_PIC_EEPROM_DDS];
+	struct zii_pic_eeprom *eeprom = adev->eeprom[ZII_PIC_EEPROM_RDU];
 
 	pr_debug("%s: enter\n", __func__);
 
