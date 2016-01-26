@@ -88,11 +88,11 @@ static ssize_t zii_eeprom_read(struct zii_pic_eeprom *eeprom,
 	if (unlikely(!count))
 		return count;
 
-	eeprom->read_buf = buf;
 	while (count) {
 		ssize_t page;
 		unsigned char data[3];
 
+		eeprom->read_buf = buf;
 		page = off / ZII_PIC_EEPROM_PAGE_SIZE;
 		eeprom->read_skip = off % ZII_PIC_EEPROM_PAGE_SIZE;
 		eeprom->read_size = (count > ZII_PIC_EEPROM_PAGE_SIZE - eeprom->read_skip) ?
@@ -168,6 +168,9 @@ static ssize_t zii_eeprom_write(struct zii_pic_eeprom *eeprom,
 			ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_EEPROM_WRITE, data, 3 + ZII_PIC_EEPROM_PAGE_SIZE);
 		else
 			ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_DDS_EEPROM_WRITE, data, 2 + ZII_PIC_EEPROM_PAGE_SIZE);
+
+		if (ret)
+			return ret;
 
 		buf += size;
 		off += size;
