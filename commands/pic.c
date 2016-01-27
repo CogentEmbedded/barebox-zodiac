@@ -541,7 +541,7 @@ int zii_pic_mcu_cmd(struct zii_pic_mfd *adev,
 		return -EINVAL;
 
 	pic_send_msg(data, adev->cmd[id].cmd_id, data_size);
-#ifdef DEBUG
+#ifdef DEBUG__
 	print_hex_dump(KERN_DEBUG, "cmd data: ", DUMP_PREFIX_OFFSET,
 			16, 1, mcu_cmd.data, mcu_cmd.size, true);
 #endif
@@ -550,7 +550,7 @@ int zii_pic_mcu_cmd(struct zii_pic_mfd *adev,
 	len = pic_recv_msg(recv_data);
 	if (len <= 0)
 		return 1;
-#ifdef DEBUG
+#ifdef DEBUG__
 	print_hex_dump(KERN_DEBUG, "response data: ", DUMP_PREFIX_OFFSET,
 			16, 1, mcu_cmd.data, mcu_cmd.size, true);
 #endif
@@ -581,7 +581,7 @@ static int zii_pic_mcu_cmd_no_response(struct zii_pic_mfd *adev,
 	if (unlikely(data_size != adev->cmd[id].data_len))
 		return -EINVAL;
 
-#ifdef DEBUG
+#ifdef DEBUG__
 	print_hex_dump(KERN_DEBUG, "cmd data: ", DUMP_PREFIX_OFFSET,
 			16, 1, mcu_cmd.data, mcu_cmd.size, true);
 #endif
