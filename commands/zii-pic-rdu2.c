@@ -56,7 +56,7 @@ struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
 	/* ZII_PIC_CMD_GET_3V3_READING */
 	{0, 0, NULL},
 	/* ZII_PIC_CMD_GET_TEMPERATURE */
-	{0x26, 1, zii_pic_rdu2_process_temp},
+	{0x24, 1, zii_pic_rdu2_process_temp},
 	/* ZII_PIC_CMD_EEPROM_READ */
 	{0xA4, 3, zii_pic_rdu2_process_eeprom_read},
 	/* ZII_PIC_CMD_EEPROM_WRITE */
@@ -135,7 +135,8 @@ int zii_pic_rdu2_process_temp(struct zii_pic_mfd *adev,
 		//return -EINVAL;
 	}
 
-	adev->temp = data[0] << 8 | data[1];
+	/* resolution 0.5 degree */
+	adev->temp = (s16)(data[0] | data[1] << 8);
 
 	return 0;
 }
