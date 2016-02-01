@@ -542,6 +542,73 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	status = "okay";
+	pic {
+		compatible = "zii,pic-rdu";
+		current-speed = <38400>;
+		status = "okay";
+
+		nvmem-cells = <&boot_source>;
+		nvmem-cell-names = "boot_source";
+
+		main_eeprom {
+			compatible = "zii,pic-main-eeprom";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "okay";
+
+			eeprom_format: eeprom-format@0 {
+				reg = <0x00 2>;
+			};
+			wdt_timeout: wdt-timeout@81 {
+				reg = <0x81 2>;
+			};
+			boot_source: boot-source@83 {
+				reg = <0x83 1>;
+			};
+			wdt_rmi: wdt-rmi@84 {
+				reg = <0x84 2>;
+			};
+			max_failed_boots: max-failed-boots@8E {
+				reg = <0x8E 2>;
+			};
+		};
+
+		dds_eeprom {
+			compatible = "zii,pic-dds-eeprom";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "okay";
+		};
+
+		watchdog {
+			compatible = "zii,pic-watchdog";
+			status = "okay";
+			nvmem-cells = <&wdt_rmi
+					&wdt_timeout>;
+
+			nvmem-cell-names = "wdt_rmi",
+					"wdt_timeout";
+		};
+
+		hwmon {
+			compatible = "zii,pic-hwmon";
+			sensors = "28V",
+				"TEMPERATURE",
+				"TEMPERATURE_2",
+				"BACKLIGHT_CURRENT";
+			status = "okay";
+		};
+
+		pwrbutton {
+			compatible = "zii,pic-pwrbutton";
+			status = "okay";
+		};
+
+		backlight {
+			compatible = "zii,pic-backlight";
+			status = "okay";
+		};
+	};
 };
 
 &usbh1 {
