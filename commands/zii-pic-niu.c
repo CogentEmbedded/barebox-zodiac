@@ -278,7 +278,7 @@ int zii_pic_niu_process_eeprom_read(struct zii_pic_mfd *adev,
 			16, 1, &data[2], ZII_PIC_EEPROM_PAGE_SIZE, true);
 #endif
 
-	memcpy(eeprom->read_buf, &data[2], eeprom->read_size);
+	memcpy(eeprom->read_buf, &data[2 + eeprom->read_skip], eeprom->read_size);
 
 	return 0;
 }
