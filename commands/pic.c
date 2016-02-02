@@ -79,14 +79,17 @@ int pic_hwmon_reg(struct zii_pic_mfd *adev, int n)
 	return 0;
 }
 
-static ssize_t zii_eeprom_read(struct zii_pic_eeprom *eeprom,
+static ssize_t zii_eeprom_read(struct zii_pic_mfd *adev, int eeprom_type,
 		char *buf, loff_t off, size_t count)
 {
 	int ret;
 	ssize_t retval = 0;
+	struct zii_pic_eeprom *eeprom;
 
 	if (unlikely(!count))
 		return count;
+
+	eeprom = adev->eeprom[eeprom_type];
 
 	while (count) {
 		ssize_t page;
@@ -120,16 +123,19 @@ static ssize_t zii_eeprom_read(struct zii_pic_eeprom *eeprom,
 	return retval;
 }
 
-static ssize_t zii_eeprom_write(struct zii_pic_eeprom *eeprom,
+static ssize_t zii_eeprom_write(struct zii_pic_mfd *adev, int eeprom_type,
 		const char *buf, loff_t off, size_t count)
 {
 	int ret;
 	int skip, size;
 	ssize_t retval = 0;
+	struct zii_pic_eeprom *eeprom;
 	unsigned char data[3 + ZII_PIC_EEPROM_PAGE_SIZE];
 
 	if (unlikely(!count))
 		return count;
+
+	eeprom = adev->eeprom[eeprom_type];
 
 	while (count) {
 		ssize_t page;
@@ -186,7 +192,7 @@ static ssize_t pic_eeprom_cdev_read(struct cdev *cdev, void *buf, size_t count,
 {
 	struct zii_pic_eeprom *eeprom = cdev->priv;
 
-	return zii_eeprom_read(eeprom, buf, off, count);
+	return zii_eeprom_read(eeprom->pic, eeprom->type, buf, off, count);
 }
 
 static ssize_t pic_eeprom_cdev_write(struct cdev *cdev, const void *buf, size_t count,
@@ -194,7 +200,7 @@ static ssize_t pic_eeprom_cdev_write(struct cdev *cdev, const void *buf, size_t 
 {
 	struct zii_pic_eeprom *eeprom = cdev->priv;
 
-	return zii_eeprom_write(eeprom, buf, off, count);
+	return zii_eeprom_write(eeprom->pic, eeprom->type, buf, off, count);
 }
 
 int pic_eeprom_reg(struct zii_pic_mfd *adev, int type)
