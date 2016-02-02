@@ -33,44 +33,44 @@
 
 
 struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
-	/* ZII_PIC_CMD_GET_STATUS */
-	{0x10, 0, zii_pic_rdu2_process_status_response},
-	/* ZII_PIC_CMD_SW_WDT_SET */
-	{0xA1, 3, NULL},
-	/* ZII_PIC_CMD_SW_WDT_GET */
-	{0,    0, NULL},
-	/* ZII_PIC_CMD_PET_WDT    */
-	{0xA2, 0, NULL},
-	/* ZII_PIC_CMD_RESET  */
-	{0xA7, 1, NULL},
-	/* ZII_PIC_CMD_HW_RECOVERY_RESET  */
-	{0xA7, 2, NULL},
-	/* ZII_PIC_CMD_GET_RESET_REASON */
-	{0x5f, 0, zii_pic_rdu2_process_reset_reason},
-	/* ZII_PIC_CMD_GET_28V_READING */
-	{0x1a, 0, zii_pic_rdu2_process_28v},
-	/* ZII_PIC_CMD_GET_12V_READING */
-	{0, 0, NULL},
-	/* ZII_PIC_CMD_GET_5V_READING */
-	{0, 0, NULL},
-	/* ZII_PIC_CMD_GET_3V3_READING */
-	{0, 0, NULL},
-	/* ZII_PIC_CMD_GET_TEMPERATURE */
-	{0x24, 1, zii_pic_rdu2_process_temp},
-	/* ZII_PIC_CMD_EEPROM_READ */
-	{0xA4, 3, zii_pic_rdu2_process_eeprom_read},
-	/* ZII_PIC_CMD_EEPROM_WRITE */
-	{0xA4, 35, zii_pic_rdu2_process_eeprom_write},
-	/* ZII_PIC_CMD_GET_FIRMWARE_VERSION */
-	{0x20, 0, zii_pic_rdu2_process_firmware_version},
-	/* ZII_PIC_CMD_GET_BOOTLOADER_VERSION */
-	{0x21, 0, zii_pic_rdu2_process_bootloader_version},
-	/* ZII_PIC_CMD_DDS_EEPROM_READ */
-	{0xA3, 2, zii_pic_rdu2_process_dds_eeprom_read},
-	/* ZII_PIC_CMD_DDS_EEPROM_WRITE */
-	{0xA3, 34, zii_pic_rdu2_process_dds_eeprom_write},
-	/* ZII_PIC_CMD_COPPER_REV */
-	{0x28, 0, zii_pic_rdu2_process_copper},
+	[ZII_PIC_CMD_GET_STATUS] =
+		{0x10, 0, zii_pic_rdu2_process_status_response},
+	[ZII_PIC_CMD_SW_WDT_SET] =
+		{0xA1, 3, NULL},
+	[ZII_PIC_CMD_SW_WDT_GET] =
+		{0,    0, NULL},
+	[ZII_PIC_CMD_PET_WDT] =
+		{0xA2, 0, NULL},
+	[ZII_PIC_CMD_RESET] =
+		{0xA7, 1, NULL},
+	[ZII_PIC_CMD_HW_RECOVERY_RESET] =
+		{0xA7, 2, NULL},
+	[ZII_PIC_CMD_GET_RESET_REASON] =
+		{0x5f, 0, zii_pic_rdu2_process_reset_reason},
+	[ZII_PIC_CMD_GET_28V_READING] =
+		{0x1a, 0, zii_pic_rdu2_process_28v},
+	[ZII_PIC_CMD_GET_12V_READING] =
+		{0, 0, NULL},
+	[ZII_PIC_CMD_GET_5V_READING] =
+		{0, 0, NULL},
+	[ZII_PIC_CMD_GET_3V3_READING] =
+		{0, 0, NULL},
+	[ZII_PIC_CMD_GET_TEMPERATURE] =
+		{0x24, 1, zii_pic_rdu2_process_temp},
+	[ZII_PIC_CMD_EEPROM_READ] =
+		{0xA4, 3, zii_pic_rdu2_process_eeprom_read},
+	[ZII_PIC_CMD_EEPROM_WRITE] =
+		{0xA4, 35, zii_pic_rdu2_process_eeprom_write},
+	[ZII_PIC_CMD_GET_FIRMWARE_VERSION] =
+		{0x20, 0, zii_pic_rdu2_process_firmware_version},
+	[ZII_PIC_CMD_GET_BOOTLOADER_VERSION] =
+		{0x21, 0, zii_pic_rdu2_process_bootloader_version},
+	[ZII_PIC_CMD_DDS_EEPROM_READ] =
+		{0xA3, 2, zii_pic_rdu2_process_dds_eeprom_read},
+	[ZII_PIC_CMD_DDS_EEPROM_WRITE] =
+		{0xA3, 34, zii_pic_rdu2_process_dds_eeprom_write},
+	[ZII_PIC_CMD_COPPER_REV] =
+		{0x28, 0, zii_pic_rdu2_process_copper},
 };
 
 int zii_pic_rdu2_process_status_response(struct zii_pic_mfd *adev,
