@@ -238,6 +238,7 @@ enum zii_pic_cmd_id {
 	ZII_PIC_CMD_DDS_EEPROM_WRITE,
 
 	ZII_PIC_CMD_COPPER_REV,
+	ZII_PIC_CMD_LCD_DATA_STABLE,
 
 	/* last one to get amount of supported commands */
 	ZII_PIC_CMD_COUNT

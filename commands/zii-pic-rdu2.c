@@ -71,6 +71,8 @@ struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
 		{0xA3, 34, zii_pic_rdu2_process_dds_eeprom_write},
 	[ZII_PIC_CMD_COPPER_REV] =
 		{0x28, 0, zii_pic_rdu2_process_copper},
+	[ZII_PIC_CMD_LCD_DATA_STABLE] =
+		{0xBE, 0, NULL},
 };
 
 int zii_pic_rdu2_process_status_response(struct zii_pic_mfd *adev,

@@ -1206,6 +1206,28 @@ BAREBOX_CMD_START(pic_reset)
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
+int do_z_lcd_stable(int argc, char *argv[])
+{
+	int ret;
+
+	if ((!pic) || (!pic->cdev))
+		return -ENODEV;
+	if (argc != 1)
+		return COMMAND_ERROR_USAGE;
+
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_LCD_DATA_STABLE, NULL, 0);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+BAREBOX_CMD_START(z_lcd_stable)
+	.cmd		= do_z_lcd_stable,
+	BAREBOX_CMD_DESC("Allow PIC to start power up sequence of display")
+	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
+BAREBOX_CMD_END
+
 /* IMS: Add U-Boot commands to Pet the Watchdog Timer using the Microchip PIC */
 int do_pic_pet_wdt (int argc, char *argv[])
 {
