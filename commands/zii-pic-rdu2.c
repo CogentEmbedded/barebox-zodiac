@@ -22,6 +22,7 @@
 #include <common.h>
 
 #include "zii-pic-niu.h"
+#include "zii-pic-rdu.h"
 #include "zii-pic-rdu2.h"
 
 #define PIC_RDU_ORIENTATION_MASK	0x7
@@ -30,6 +31,8 @@
 /* Main RDU EEPROM has same command/response structure */
 #define zii_pic_rdu2_process_eeprom_read	zii_pic_niu_process_eeprom_read
 #define zii_pic_rdu2_process_eeprom_write	zii_pic_niu_process_eeprom_write
+#define zii_pic_rdu2_process_dds_eeprom_read	zii_pic_rdu_process_dds_eeprom_read
+#define zii_pic_rdu2_process_dds_eeprom_write	zii_pic_rdu_process_dds_eeprom_write
 
 
 struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
@@ -169,47 +172,6 @@ int zii_pic_rdu2_process_bootloader_version(struct zii_pic_mfd *adev,
 
 	/* convert to millidegree Celsius */
 	memcpy(&adev->bootloader_version, data, size);
-
-	return 0;
-}
-
-int zii_pic_rdu2_process_dds_eeprom_read(struct zii_pic_mfd *adev,
-				u8 *data, u8 size)
-{
-	struct zii_pic_eeprom *eeprom = adev->eeprom[ZII_PIC_EEPROM_DDS];
-
-	pr_debug("%s: enter\n", __func__);
-
-	/* bad response, ignore */
-	if (size != 2 + ZII_PIC_EEPROM_PAGE_SIZE)
-		return -EINVAL;
-
-	/* check operation status */
-	if (!data[1])
-		return -EIO;
-
-#ifdef DEBUG
-	print_hex_dump(KERN_DEBUG, "DDS EEPROM data: ", DUMP_PREFIX_OFFSET,
-			16, 1, &data[2], ZII_PIC_EEPROM_PAGE_SIZE, true);
-#endif
-
-	memcpy(eeprom->read_buf, &data[2], eeprom->read_size);
-
-	return 0;
-}
-
-int zii_pic_rdu2_process_dds_eeprom_write(struct zii_pic_mfd *adev,
-				u8 *data, u8 size)
-{
-	pr_debug("%s: enter\n", __func__);
-
-	/* bad response, ignore */
-	if (size != 2)
-		return -EINVAL;
-
-	/* check operation status */
-	if (!data[1])
-		return -EIO;
 
 	return 0;
 }
