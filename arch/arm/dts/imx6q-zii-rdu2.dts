@@ -118,7 +118,7 @@
 		port@0 {
 			reg = <0>;
 
-			lcd_display_in: endpoint {
+			imx_display_in: endpoint {
 				remote-endpoint = <&ipu1_di0_disp0>;
 			};
 		};
@@ -126,35 +126,8 @@
 		port@1 {
 			reg = <1>;
 
-			lcd_display_out: endpoint {
-				remote-endpoint = <&lcd_panel_in>;
-			};
-		};
-
-		display-timings {
-			native-mode = <&timing_unknown>;
-			timing_unknown: timing_unknown_1 {
-				clock-frequency = <71100000>;
-				hactive 	= <1024>;
-				vactive 	= <768>;
-				hback-porch 	= <40>;
-				hfront-porch 	= <40>;
-				vback-porch 	= <10>;
-				vfront-porch 	= <3>;
-				hsync-len 	= <80>;
-				vsync-len 	= <10>;
-				de-active 	= <1>;
-				pixelclk-active = <1>;
-			};
-		};
-	};
-
-	lcd_panel {
-		compatible = "okaya,rs800480t-7x0gp";
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+			imx_display_out: endpoint {
+				remote-endpoint = <&tc358767_in>;
 			};
 		};
 	};
@@ -485,8 +458,18 @@
 	status = "okay";
 
 	edp: tc358767@0x68 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		compatible = "tc358767";
 		reg = <0x68>;
+
+		port@0 {
+			reg = <0>;
+
+			tc358767_in: endpoint {
+				remote-endpoint = <&imx_display_out>;
+			};
+		};
 	};
 };
 
@@ -660,7 +643,7 @@
 };
 
 &ipu1_di0_disp0 {
-	remote-endpoint = <&lcd_display_in>;
+	remote-endpoint = <&imx_display_in>;
 };
 
 &ldb {
