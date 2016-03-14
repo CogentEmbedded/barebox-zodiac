@@ -483,6 +483,11 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c1>;
 	status = "okay";
+
+	edp: tc358767@0x68 {
+		compatible = "tc358767";
+		reg = <0x68>;
+	};
 };
 
 &tempmon {
