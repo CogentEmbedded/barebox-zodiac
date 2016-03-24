@@ -97,6 +97,8 @@
 #define PXL_PLLPARAM		0x0914
 #define SYS_PLLPARAM		0x0918
 
+#define TSTCTL			0x0a00
+
 /* misc */
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -619,6 +621,34 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, int pixelclock)
 		/* for 132 MHz pixelclock */
 		tc_write(DP0_VIDMNGEN1, N);
 	}
+
+	return 0;
+err:
+	return ret;
+}
+
+static int tc_test_pattern(struct tc_data *tc, unsigned int type)
+{
+	int ret;
+	u32 value;
+
+	if (type > 3)
+		return -EINVAL;
+
+	/* set type */
+	tc_read(TSTCTL, &value);
+	value &= ~0x03;
+	value |= type;
+	tc_write(TSTCTL, value);
+
+	/* set mode */
+	tc_read(SYSCTRL, &value);
+	value &= ~0x03;
+	if (type)
+		value |= 0x03;
+	else
+		value |= 0x02; /* DPI input */
+	tc_write(SYSCTRL, value);
 
 	return 0;
 err:
@@ -1299,9 +1329,9 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 	tc_write(VFUEN0, 0x00000001);		/* update settings */
 
 	/* Enable Color Bar */
-	//tc_write(0x0a00, 0xffffff12);
+	//tc_write(TSTCTL, 0xffffff12);
 	/* Austin: */
-	tc_write(0x0a00, //0x78146312); 
+	tc_write(TSTCTL, //0x78146312); 
 		(120 << 24) |	/* Red Color component value */
 		(20 << 16) |	/* Green Color component value */
 		(99 << 8) |	/* Blue Color component value */
@@ -1581,6 +1611,15 @@ static int do_edp_debug(int argc, char *argv[])
 
 		clock = simple_strtol(argv[2], NULL, 0);
 		ret = tc_calc_pll(tc, 19200000, clock);
+		if (ret)
+			goto err;
+	}
+
+	if ((argc == 3) && (!strcmp(argv[1], "t"))) {
+		int type;
+
+		type = simple_strtol(argv[2], NULL, 0);
+		ret = tc_test_pattern(tc, type);
 		if (ret)
 			goto err;
 	}
