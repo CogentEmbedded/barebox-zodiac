@@ -36,10 +36,11 @@
 /* debug */
 #include <command.h>
 
-#define TEST_BAR		999
+//#define TEST_BAR		999
 
 /* registers */
 #define DPIPXLFMT		0x0440
+#define POCTRL			0x0448	/* not defined in DS */
 
 #define VPCTRL0			0x0450
 #define HTIM01			0x0454
@@ -123,6 +124,9 @@ struct tc_data {
 
 	/* link settings */
 	struct edp_link		link;
+
+	/* pxl_pll */
+	u32			pxl_pll;
 
 	u32			rev;
 	u8			assr;
@@ -279,7 +283,7 @@ static int tc_aux_write(struct tc_data *tc, int reg, char *data, int size)
 	int i = 0;
 	int ret;
 	u32 tmp = 0;
-	char read_back[16];
+	//u8 read_back[16];
 
 	ret = tc_aux_i2c_wait_busy(tc, 100);
 	if (ret)
@@ -308,13 +312,13 @@ static int tc_aux_write(struct tc_data *tc, int reg, char *data, int size)
 	ret = tc_aux_i2c_get_status(tc);
 	if (ret)
 		goto err;
-
+/*
 	tc_aux_read(tc, reg, read_back, size);
 	for (i = 0; i < size; i++)
 		if (data[i] != read_back[i])
 			printf("Readback failed reg 0x%06x: %02x != %02x\n",
 				reg + i, data[i], read_back[i]);
-
+*/
 	return 0;
 err:
 	dev_err(tc->dev, "tc_aux_write error: %d\n", ret);
@@ -359,7 +363,6 @@ static int tc_aux_i2c_read(struct tc_data *tc, struct i2c_msg *msg)
 
 	return 0;
 err:
-	//dev_err(tc->dev, "tc_aux_i2c_read failed: %d\n", ret);
 	return ret;
 }
 
@@ -406,7 +409,6 @@ static int tc_aux_i2c_write(struct tc_data *tc, struct i2c_msg *msg)
 
 	return 0;
 err:
-	//dev_err(tc->dev, "tc_aux_i2c_write failed: %d\n", ret);
 	return ret;
 }
 
@@ -416,15 +418,15 @@ static int tc_aux_i2c_xfer(struct i2c_adapter *adapter,
 	struct tc_data *tc = to_tc_i2c_struct(adapter);
 	unsigned int i;
 	int ret;
-#if 0
+
 	/* check */
 	for (i = 0; i < num; i++) {
 		if (msgs[i].len > 16) {
-			dev_err(data->dev, "this bus support max 16 bytes per transfer\n");
+			dev_err(tc->dev, "this bus support max 16 bytes per transfer\n");
 			return -EINVAL;
 		}
 	}
-#endif
+
 	/* read/write data */
 	for (i = 0; i < num; i++) {
 		/* write/read data */
@@ -483,10 +485,20 @@ static u32 tc_srcctrl(struct tc_data *tc)
 	return reg;
 }
 
-static int tc_calc_pll(struct tc_data *tc, u32 refclk, struct fb_videomode *mode)
+u32 NOD(u32 a, u32 b)
+{
+	while(a > 0 && b > 0) {
+		if(a > b)
+			a %= b;
+		else
+			b %= a;
+		}
+	return a + b;
+}
+
+static int tc_calc_pll(struct tc_data *tc, u32 refclk, int pixelclock)
 {
 	int ret;
-	int pixelclock;
 	int i_pre, best_pre = 1;
 	int i_post, best_post = 1;
 	int div, best_div = 1;
@@ -497,8 +509,8 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, struct fb_videomode *mode
 	int best_pixelclock = 0;
 	int vco_hi = 0;
 
-	pixelclock = best_delta = PICOS2KHZ(mode->pixclock) * 1000UL;
 	printf("requested %d pixeclock, ref %d\n", pixelclock, refclk);
+	best_delta = pixelclock;
 	/* big loops */
 	for (i_pre = 0; i_pre < ARRAY_SIZE(e_pre_div); i_pre++) {
 		/* check restrictions */
@@ -512,6 +524,7 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, struct fb_videomode *mode
 					div / refclk;
 
 				/* do we accept negative delta? */
+#if 0
 				do {
 					clk = refclk / e_pre_div[i_pre] / div * mul / e_post_div[i_post];
 
@@ -519,6 +532,10 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, struct fb_videomode *mode
 					if (delta < 0)
 						mul++;
 				} while (delta < 0);
+#else
+				clk = refclk / e_pre_div[i_pre] / div * mul / e_post_div[i_post];
+				delta = clk - pixelclock;
+#endif
 
 				/* check limits */
 				if ((mul < 1) ||
@@ -549,6 +566,8 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, struct fb_videomode *mode
 	printf(" %d / %d / %d * %d / %d\n",
 		refclk, e_pre_div[best_pre], best_div,
 		best_mul, e_post_div[best_post]);
+
+	tc->pxl_pll = best_pixelclock;
 
 	/* if VCO >= 300 MHz */
 	if (refclk / e_pre_div[best_pre] / best_div * best_mul >=
@@ -581,6 +600,26 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, struct fb_videomode *mode
 	/* ? */
 	mdelay(100);
 
+	/*
+	 * If the Stream clock and Link Symbol clock are asynchronous with each other, the value of M changes over
+	 * time. This way of generating link clock and stream clock is called Asynchronous Clock mode. The value M
+	 * must change while the value N stays constant. The value of N in this Asynchronous Clock mode must be set
+	 * to 2^15 or 32,768.
+	 */
+	/* calc M and N for clock recovery */
+	if (1) {
+		u32 N;
+		u32 ls;
+		if (tc->link.rate == 0x0a)
+			ls = 2700000000u;
+		else
+			ls = 1420000000u;
+
+		N = NOD(tc->pxl_pll, ls);
+		/* for 132 MHz pixelclock */
+		tc_write(DP0_VIDMNGEN1, N);
+	}
+
 	return 0;
 err:
 	return ret;
@@ -591,21 +630,6 @@ static int tc_aux_link_setup(struct tc_data *tc)
 	int ret;
 	u32 value;
 	int timeout;
-
-	/* ----Setup Main Link-------- */
-	tc_write(DP0_SRCCTRL, //0x00003087);
-		DP0_SRCCTRL_SCRMBLDIS |	/* Scrambler Disabled */
-		DP0_SRCCTRL_EN810B |	/* Enable 8/10B Encoder (TxData[19:16] not used) */
-		DP0_SRCCTRL_NOTP   |	/* Training Pattern disabled */
-		DP0_SRCCTRL_LANESKEW |	/* skew lane 1 data by two LSCLK cycles with respect to lane 0 data */
-		(0 << 3) |		/* Spread Spectrum Disabled (default) */
-		DP0_SRCCTRL_LANES_2 |	/* Two Main Channel Lanes */
-		DP0_SRCCTRL_BW27 |	/* 2.7 Gbps link (default) */
-		(0 << 0) |	/* AutoCorrect Mode = 0 */
-		//(1 << 0) |	/* AutoCorrect Mode = 1 */
-		0);
-	//DP0_SrcCtrl	0x06A0	0x00003083
-	//tc_write(0x07A0, 0x00003083);	//???
 
 	/* ----Setup DP-PHY / PLL------- */
 	tc_write(SYS_PLLPARAM, //0x00000101);
@@ -627,27 +651,7 @@ static int tc_aux_link_setup(struct tc_data *tc)
 		0);
 	/* wait PLL lock */
 	mdelay(100);
-	//#DP1_PLLCTRL	0x0904	0x00000005
 	tc_write(0x0904, 0x00000005);	//???
-
-#if 0
-	/* pixelclock */
-	tc_write(PXL_PLLPARAM, //0x01330141);
-		(0x01 << 24)|	/* For PLL VCO >= 300 MHz = 1 */
-		(0x03 << 20)|	/* External Pre-divider = 3 */
-		(0x03 << 16)|	/* External Post-divider = 3 */
-		(0x00 << 14)|	/* Use RefClk */
-		(0x01 << 8) |	/* Divider for PLL RefClk */
-		(0x41 << 0) |	/* Multiplier for PLL */
-		0);
-	tc_write(PXL_PLLCTRL, //0x00000005);
-		(1 << 2) |	/* Force PLL parameter update register */
-		(0 << 1) |	/* PLL bypass disabled */
-		(1 << 0) |	/* Enable PLL */
-		0);
-
-	mdelay(100);
-#endif
 
 	timeout = 1000;
 	do {
@@ -659,19 +663,13 @@ static int tc_aux_link_setup(struct tc_data *tc)
 		dev_err(tc->dev, "timeout waiting for phy become ready");
 		return -ETIMEDOUT;
 	}
-	printf("Reg DP_PHY_CTRL 0x%08x (should be 0x%08x)\n",
-		value, 0x03010007);
-
-	/* ----Set misc---- */
-	tc_read(DP0_MISC, &value);
-	value = value | (1 << 5);
-	tc_write(DP0_MISC, value);
 
 	/* ----Setup AUX link */
-	tc_write(DP0_AUXCFG1, 0x0001063F);
-
-	/* test - not defined in DS */
-	tc_write(0x0448, 0x00000080);
+	tc_write(DP0_AUXCFG1,
+		(1 << 16) |	/* Aux Rx Filter Enable */
+		(0x06 << 8) |	/* Aux Bit Period Calculator Threshhold */
+		(0x3F << 0) |	/* Aux Response Timeout Timer */
+		0);
 
 	return 0;
 err:
@@ -685,16 +683,17 @@ static int tc_main_link_setup(struct tc_data *tc, int retry_loop)
 	u32 value;
 	u32 ltchgreq;
 	/* temp buffer */
-	char tmp[16];
+	u8 tmp[16];
 	int timeout;
 	int retry;
 
-#if 0
 	/* ----Set misc---- */
+	/* 8 bits per color */
 	tc_read(DP0_MISC, &value);
 	value = value | (1 << 5);
 	tc_write(DP0_MISC, value);
 
+#if 0
 	/* ----Setup AUX link */
 	tc_write(DP0_AUXCFG1, 0x0001063F);
 #endif
@@ -765,60 +764,7 @@ static int tc_main_link_setup(struct tc_data *tc, int retry_loop)
 	}
 
 	/* ----Setup Main Link-------- */
-#if 0
-	tc_write(DP0_SRCCTRL, //0x00003087);
-		(1 << 13)|	/* Scrambler Disabled */
-		(1 << 12)|	/* Enable 8/10B Encoder (TxData[19:16] not used) */
-		(0 << 8) |	/* Training Pattern disabled */
-		(1 << 7) |	/* skew lane 1 data by two LSCLK cycles with respect to lane 0 data */
-		(0 << 3) |	/* Spread Spectrum Disabled (default) */
-		(1 << 2) |	/* Two Main Channel Lanes */
-		(1 << 1) |	/* 2.7 Gbps link (default) */
-		(0 << 0) |	/* AutoCorrect Mode = 0 */
-		//(1 << 0) |	/* AutoCorrect Mode = 1 */
-		0);
-	//DP0_SrcCtrl	0x06A0	0x00003083
-	//tc_write(0x07A0, 0x00003083);	//???
-#endif
-#if 0
-	/* ----Setup DP-PHY / PLL------- */
-	tc_write(SYS_PLLPARAM, //0x00000101);
-		(1 << 8) |	/* RefClk frequency is 19.2 MHz */
-		(0 << 4) |	/* Use LSCLK based source */
-		//(1 << 4) |	/* Use DSI Clock HSBYTECLK */
-		(1 << 0) |	/* LSCLK divider for SYSCLK = 2 */
-		0);
-	tc_write(DP_PHY_CTRL, //0x03000007);
-		(1 << 25)|	/* AUX PHY BGR Enable */
-		(1 << 24)|	/* PHY Power Switch Enable */
-		(1 << 2) |	/* Reserved */
-		(1 << 1) |	/* PHY Aux Channel0 Enable */
-		(1 << 0) |	/* PHY Main Channel0 Enable */
-		0);
-	tc_write(DP0_PLLCTRL, //0x00000005);
-		(1 << 2) |	/* Force PLL parameter update register */
-		(0 << 1) |	/* PLL bypass disabled */
-		(1 << 0) |	/* Enable PLL */
-		0);
-	/* wait PLL lock */
-	mdelay(100);
-	//#DP1_PLLCTRL	0x0904	0x00000005
-	tc_write(0x0904, 0x00000005);	//???
-	tc_write(PXL_PLLPARAM, //0x01330141);
-		(0x01 << 24)|	/* For PLL VCO >= 300 MHz = 1 */
-		(0x03 << 20)|	/* External Pre-divider = 3 */
-		(0x03 << 16)|	/* External Post-divider = 3 */
-		(0x00 << 14)|	/* Use RefClk */
-		(0x01 << 8) |	/* Divider for PLL RefClk */
-		(0x41 << 0) |	/* Multiplier for PLL */
-		0);
-	tc_write(PXL_PLLCTRL, //0x00000005);
-		(1 << 2) |	/* Force PLL parameter update register */
-		(0 << 1) |	/* PLL bypass disabled */
-		(1 << 0) |	/* Enable PLL */
-		0);
-#endif
-#if 0
+#if 1
 	/* ----Reset/Enable Main Links-------- */
 	tc_write(DP_PHY_CTRL, //0x13001107);	should be 0x13001117
 		(1 << 28)|	/* DP PHY Global Soft Reset */
@@ -940,10 +886,13 @@ retry__:
 	if (retry == 0)
 		dev_err(tc->dev, "failed to finish training pohase 1\n");
 
+#if 0
 	tc_read(DP0_SNKLTCHGREQ, &ltchgreq);
 	printf(" DP0_SNKLTCHGREQ: 0x%08x\n", ltchgreq);
 	tc->link.preemp = MAX((ltchgreq >> 6) & 0x03, (ltchgreq >> 2) & 0x03);
 	tc->link.swing = MAX((ltchgreq >> 4) & 0x03, (ltchgreq >> 0) & 0x03);
+#endif
+#if 0
 	/* ----Read DPCD 0x00200-0x00206-------- */
 	ret = tc_aux_read(tc, 0x000200, tmp, 7);
 	if (ret)
@@ -956,7 +905,7 @@ retry__:
 	printf("0x0204 LANE_ALIGN__STATUS_UPDATED: 0x%02x\n", tmp[4]);
 	printf("0x0205 SINK_STATUS: 0x%02x\n", tmp[5]);
 	printf("0x0206 ADJUST_REQUEST_LANE0_1: 0x%02x\n", tmp[6]);
-
+#endif
 	/* ----Set DPCD 00102h for Link Traing Part 2-------- */
 	tc_write(DP0_SNKLTCTRL, 0x00000022);
 	//tc_write(DP0_SNKLTCTRL, 0x00000002);
@@ -1013,10 +962,12 @@ retry__:
 	if (retry == 0)
 		dev_err(tc->dev, "failed to finish training pohase 2\n");
 
+#if 0
 	tc_read(DP0_SNKLTCHGREQ, &ltchgreq);
 	printf(" DP0_SNKLTCHGREQ: 0x%08x\n", ltchgreq);
 	tc->link.preemp = MAX((ltchgreq >> 6) & 0x03, (ltchgreq >> 2) & 0x03);
 	tc->link.swing = MAX((ltchgreq >> 4) & 0x03, (ltchgreq >> 0) & 0x03);
+#endif
 #if 0
 	/* ----Clear DP0 Training Pattern-------- */
 	//tc_write(DP0_SRCCTRL, 0x00003087);
@@ -1028,8 +979,22 @@ retry__:
 		//(0 << 0) |	/* AutoCorrect Mode = 0 */
 		(1 << 0) |	/* AutoCorrect Mode = 1 */
 		0);
-#endif
 	mdelay(100);
+#endif
+	/* ----Clear DPCD 00102h-------- */
+	/* Note: Can Not use DP0_SNKLTCTRL (0x06E4) short cut */
+	tmp[0] = 0x00;
+	ret = tc_aux_write(tc, 0x000102, tmp, 1); /* TRAINING_PATTERN_SET */
+	if (ret)
+		goto err_dpcd_write;
+
+	//tc_write(DP0_SRCCTRL, 0x00003087);
+	tc_write(DP0_SRCCTRL, tc_srcctrl(tc) |
+		DP0_SRCCTRL_LANESKEW |		/* skew lane 1 data by two LSCLK cycles with respect to lane 0 data */
+		//(0 << 0) |	/* AutoCorrect Mode = 0 */
+		DP0_SRCCTRL_AUTOCORRECT |	/* AutoCorrect Mode = 1 */
+		0);
+
 	/* ----Read DPCD 0x00200-0x00206-------- */
 	ret = tc_aux_read(tc, 0x000200, tmp, 7);
 	if (ret)
@@ -1052,23 +1017,13 @@ retry__:
 		//return -EAGAIN;
 	}
 
+	if ((tmp[5] & 0x01) != 0x01) {
+		dev_err(tc->dev, "Sink not ready\n");
+		//return -EAGAIN;
+	}
+
 	if ((retry_loop) && (!tmp[5]))
 		goto retry__;
-
-	/* ----Clear DPCD 00102h-------- */
-	/* Note: Can Not use DP0_SNKLTCTRL (0x06E4) short cut */
-	tmp[0] = 0x00;
-	ret = tc_aux_write(tc, 0x000102, tmp, 1); /* TRAINING_PATTERN_SET */
-	if (ret)
-		goto err_dpcd_write;
-
-	//tc_write(DP0_SRCCTRL, 0x00003087);
-	tc_write(DP0_SRCCTRL, tc_srcctrl(tc) |
-		DP0_SRCCTRL_LANESKEW |		/* skew lane 1 data by two LSCLK cycles with respect to lane 0 data */
-		//(0 << 0) |	/* AutoCorrect Mode = 0 */
-		DP0_SRCCTRL_AUTOCORRECT |	/* AutoCorrect Mode = 1 */
-		0);
-
 #if 0
 	/* disable power down mode */
 	tmp[0] = 0x01;
@@ -1097,13 +1052,6 @@ static int tc_main_link_stream(struct tc_data *tc, int state)
 	u32 value;
 
 	printf("stream: %d\n", state);
-
-#ifdef TEST_BAR
-	/* enable test bar */
-	//tc_write(0x0a00, 0xffffff12);
-	/* Austin: */
-	tc_write(0x0a00, 0x78146312);
-#endif
 
 	if (state) {
 		value = 
@@ -1186,7 +1134,7 @@ static int tc_debug_dump(struct tc_data *tc)
 {
 	int i;
 	int ret;
-	char tmp[16];
+	u8 tmp[16];
 	struct {
 		int	addr;
 		int	size;
@@ -1314,24 +1262,72 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 		mode->left_margin, mode->right_margin, mode->hsync_len);
 	printf("V margin %d,%d sync %d\n",
 		mode->upper_margin, mode->lower_margin, mode->vsync_len);
-
-	ret = tc_calc_pll(tc, 19200000, mode);
+/*
+	ret = tc_calc_pll(tc, 19200000, PICOS2KHZ(mode->pixclock) * 1000UL);
 	if (ret) {
 		dev_err(tc->dev, "failed to set PLL\n");
 		goto err;
 	}
-
+*/
 	htotal = mode->hsync_len + mode->left_margin + mode->xres +
 		mode->right_margin;
 	vtotal = mode->vsync_len + mode->upper_margin + mode->yres +
 		mode->lower_margin;
 	printf("total: %dx%d\n", htotal, vtotal);
 
+
+	/* LCD Ctl Frame Size */
+	/* Austin: 04000100 */
+	tc_write(VPCTRL0,
+		(0x40 << 20)|	/* VSDELAY */
+		(1 << 8) |	/* RGB888 */
+		(0 << 4) |	/* timing gen is disabled */
+		(0 << 0) |	/* Magic Square is disabled */
+		0);
+	tc_write(HTIM01,
+		(mode->left_margin << 16) |	/* H back porch */
+		(mode->hsync_len << 0));	/* Hsync */
+	tc_write(HTIM02,
+		(mode->right_margin << 16) |	/* H front porch */
+		(mode->xres << 0));		/* width */
+	tc_write(VTIM01,
+		(mode->upper_margin << 16) |	/* V back porch */
+		(mode->vsync_len << 0));	/* Vsync */
+	tc_write(VTIM02,
+		(mode->lower_margin << 16) |	/* V front porch */
+		(mode->yres << 0));		/* height */
+	tc_write(VFUEN0, 0x00000001);		/* update settings */
+
+	/* Enable Color Bar */
+	//tc_write(0x0a00, 0xffffff12);
+	/* Austin: */
+	tc_write(0x0a00, //0x78146312); 
+		(120 << 24) |	/* Red Color component value */
+		(20 << 16) |	/* Green Color component value */
+		(99 << 8) |	/* Blue Color component value */
+		(1 << 4) |	/* Enable I2C Filter */
+		(2 << 0) |	/* Color bar Mode */
+		0);
+
+	/* DP Main Stream Attirbutes */
+	//tc_write(DP0_VIDSYNCDELAY, (0x0f << 16) | 0x0f); /* defaults, check this */
+	/* Austin: */
+	//tc_write(DP0_VIDSYNCDELAY, (0x003e << 16) | 0x07f0);
+	//printf("Sync delay %d\n", mode->hsync_len + mode->left_margin + mode->xres);
+	//printf("Htotal = %d, not %d\n", htotal, 0x07f0);
+	tc_write(DP0_VIDSYNCDELAY, 
+		((0x003e) << 16) | 
+		((mode->hsync_len + mode->left_margin + mode->xres) << 0));
+	//tc_write(DP0_VIDMNGEN0, 0x0); /* audio sync stuff */
+
 	tc_write(DP0_TOTALVAL, (vtotal << 16) | (htotal));
+
+	tc_write(DP0_STARTVAL,
+		((mode->upper_margin + mode->vsync_len) << 16) |
+		((mode->left_margin + mode->hsync_len) << 0));
 	
 	tc_write(DP0_ACTIVEVAL, (mode->yres << 16) | (mode->xres));
-	tc_write(DP0_STARTVAL, (mode->upper_margin << 16) |
-		(mode->left_margin));
+
 	tc_write(DP0_SYNCVAL,
 		(1 << 31)|			/* Vsync active low */
 		(mode->vsync_len << 16)|	/* Vsync width */
@@ -1348,44 +1344,29 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 		(0x3e << 23)|			/* max_tu_symbol */
 		(0x3f << 16)|			/* tu_size */
 		(1 << 5) |			/* 8 bit per component */
+		//(0 << 5) |			/* 6 bit per component */
+		//(1 << 0) |			/* SyncClk */
 		0);
 #endif
-	//tc_write(DP0_VIDSYNCDELAY, (0x0f << 16) | 0x0f); /* defaults, check this */
-	/* Austin: */
-	tc_write(DP0_VIDSYNCDELAY, (0x003e << 16) | 0x07f0); /* defaults, check this */
-	//tc_write(DP0_VIDMNGEN0, 0x0); /* audio sync stuff */
-	/*
-	 * If the Stream clock and Link Symbol clock are asynchronous with each other, the value of M changes over
-	 * time. This way of generating link clock and stream clock is called Asynchronous Clock mode. The value M
-	 * must change while the value N stays constant. The value of N in this Asynchronous Clock mode must be set
-	 * to 2^15 or 32,768.
-	 */
-	tc_write(DP0_VIDMNGEN1, 32768);
-	//tc_write(DP0_VIDMNGEN1, 0x00000195); /* video sync stuff */
-	/* set modes to tc */
-	/* Austin: 04000100 */
-	tc_write(VPCTRL0,
-		(0x40 << 20)|	/* VSDELAY */
-		(1 << 8) |	/* RGB888 */
-		//(1 << 4) |	/* timing gen enable - disable! */
-		(1 << 0) |	/* Magic Square is enabled */
-		0);
 
-	/* needed only when timing generation enabled */
-	tc_write(HTIM01,
-		(mode->left_margin << 16) |	/* H back porch */
-		(mode->hsync_len << 0));	/* Hsync */
-	tc_write(HTIM02,
-		(mode->right_margin << 16) |	/* H front porch */
-		(mode->xres << 0));		/* width */
-	tc_write(VTIM01,
-		(mode->upper_margin << 16) |	/* V back porch */
-		(mode->vsync_len << 0));	/* Vsync */
-	tc_write(VTIM02,
-		(mode->lower_margin << 16) |	/* V front porch */
-		(mode->yres << 0));		/* height */
-	/* update settings */
-	tc_write(VFUEN0, 0x00000001);
+#if 1
+	/* POCTRL - not defined in DS */
+	/* assume 1 - mean Act low as in DP0_SYNCVAL */
+	tc_write(POCTRL, //0x00000080);
+		//(1 << 7) |	/* S2P??? - SINK_STATUS does not go 1 if set */
+#if 0
+		(0 << 3) |	/* PClk_P =? PCLK polarity? */
+		(1 << 2) |	/* VS_P =? VSync polarity? */
+		(1 << 1) |	/* HS_P =? HSync polarity? */
+		(0 << 0) |	/* DE_P =? DE polarity? */
+#else
+		(1 << 3) |	/* PClk_P =? PCLK polarity? */
+		(0 << 2) |	/* VS_P =? VSync polarity? */
+		(0 << 1) |	/* HS_P =? HSync polarity? */
+		(1 << 0) |	/* DE_P =? DE polarity? */
+#endif
+		0);
+#endif
 
 	return 0;
 err:
@@ -1464,15 +1445,25 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 
 	switch (cmd) {
 	case VPL_PREPARE:
-		printf("VPL_PREPARE\n");
 		dev_dbg(tc->dev, "VPL_PREPARE\n");
 		mode = ptr;
+		ret = tc_calc_pll(tc, 19200000, PICOS2KHZ(mode->pixclock) * 1000UL);
+		if (ret)
+			break;
+		ret = tc_main_link_setup(tc, 0);
+		if (ret < 0)
+			break;
 		ret = tc_set_video_mode(tc, mode);
+		if (ret < 0)
+			break;
+		ret = tc_main_link_stream(tc, 1);
+		if (ret < 0)
+			break;
+
 		goto forward;
 	case VPL_ENABLE:
-		printf("VPL_ENABLE\n");
 		dev_dbg(tc->dev, "VPL_ENABLE\n");
-
+/*
 		ret = tc_main_link_setup(tc, 0);
 		if (ret < 0)
 			break;
@@ -1481,11 +1472,11 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 			break;
 
 		udelay(100);
+*/
 		tc_debug_dump(tc);
 
 		goto forward;
 	case VPL_DISABLE:
-		printf("VPL_DISABLE\n");
 		dev_dbg(tc->dev, "VPL_DISABLE\n");
 
 		ret = tc_main_link_stream(tc, 0);
@@ -1494,14 +1485,12 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 
 		goto forward;
 	case VPL_GET_VIDEOMODES:
-		printf("VPL_GET_VIDEOMODES\n");
 		dev_dbg(tc->dev, "VPL_GET_VIDEOMODES\n");
 
 		ret = tc_get_videomodes(tc, ptr);
 		break;
 	/* hack */
 	case IMX_IPU_VPL_DI_MODE:
-		printf("!!IMX_IPU_VPL_DI_MODE\n");
 		dev_dbg(tc->dev, "IMX_IPU_VPL_DI_MODE\n");
 
 		ipu_mode = ptr;
@@ -1583,6 +1572,15 @@ static int do_edp_debug(int argc, char *argv[])
 		value = simple_strtol(argv[3], NULL, 0);
 
 		ret = tc_aux_write(tc, reg, &value, 1);
+		if (ret)
+			goto err;
+	}
+
+	if ((argc == 3) && (!strcmp(argv[1], "c"))) {
+		int clock;
+
+		clock = simple_strtol(argv[2], NULL, 0);
+		ret = tc_calc_pll(tc, 19200000, clock);
 		if (ret)
 			goto err;
 	}
