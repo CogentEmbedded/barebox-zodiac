@@ -115,6 +115,7 @@ int ipu_crtc_mode_set(struct ipufb_info *fbi,
 	dev_info(fbi->dev, "%s: mode->yres: %d\n", __func__,
 			mode->yres);
 
+	printf("Ask port %d for DI_MODE\n", 2 + fbi->dino);
 	vpl_ioctl(&fbi->vpl, 2 + fbi->dino, IMX_IPU_VPL_DI_MODE, &di_mode);
 	interface_pix_fmt = di_mode.interface_pix_fmt ?
 		di_mode.interface_pix_fmt : fbi->interface_pix_fmt;
@@ -125,6 +126,8 @@ int ipu_crtc_mode_set(struct ipufb_info *fbi,
 		sig_cfg.Vsync_pol = 1;
 
 	sig_cfg.enable_pol = 1;
+	printf("Hsycn: %d, Vsync %d, en_pol: %d\n",
+		sig_cfg.Hsync_pol, sig_cfg.Vsync_pol, sig_cfg.enable_pol);
 	sig_cfg.clk_pol = 0;
 	sig_cfg.width = mode->xres;
 	sig_cfg.height = mode->yres;

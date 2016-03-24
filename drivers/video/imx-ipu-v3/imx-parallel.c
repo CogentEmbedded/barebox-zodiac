@@ -64,12 +64,19 @@ struct imx_pd {
 static int imx_pd_get_modes(struct imx_pd *imx_pd,
 				struct display_timings *timings)
 {
-	timings->num_modes = imx_pd->timings->num_modes;
-	timings->native_mode = imx_pd->timings->native_mode;
-	timings->modes = imx_pd->timings->modes;
-	timings->edid = NULL;
+	printf("imx_pd_get_modes\n");
+	if (imx_pd->timings) {
+		printf(" got timings\n");
+		timings->num_modes = imx_pd->timings->num_modes;
+		timings->native_mode = imx_pd->timings->native_mode;
+		timings->modes = imx_pd->timings->modes;
+		timings->edid = NULL;
+		return 0;
+	}
 
-	return 0;
+	/* if no timing provided assume it is provided by next node */
+	printf(" asking next vpl node\n");
+	return vpl_ioctl(&imx_pd->vpl, 1, VPL_GET_VIDEOMODES, timings);
 }
 
 static int imx_pd_ioctl(struct vpl *vpl, unsigned int port,
@@ -120,14 +127,11 @@ static int imx_pd_probe(struct device_d *dev)
 		}
 	}
 
-	imx_pd->timings = of_get_display_timings(np);
-	if (!imx_pd->timings)
-		return -ENODEV;
-
 	port = of_graph_get_port_by_id(np, 0);
-	if (!port)
+	if (!port) {
+		dev_err(dev, "No port 0\n");
 		return -ENODEV;
-
+	}
 
 	endpoint = of_get_child_by_name(port, "endpoint");
 	if (!endpoint) {
@@ -135,11 +139,29 @@ static int imx_pd_probe(struct device_d *dev)
 		return -EINVAL;
 	}
 
+	imx_pd->timings = of_get_display_timings(np);
+	if (!imx_pd->timings) {
+		port = of_graph_get_port_by_id(np, 1);
+
+		if (!port) {
+			dev_err(dev, "No timing and no port 1\n");
+			return -ENODEV;
+		}
+
+		endpoint = of_get_child_by_name(port, "endpoint");
+		if (!endpoint) {
+			dev_warn(dev, "No endpoint on port 1 and no timing\n");
+			return -EINVAL;
+		}
+	}
+
 	imx_pd->vpl.node = np;
 	imx_pd->vpl.ioctl = &imx_pd_ioctl;
 	ret = vpl_register(&imx_pd->vpl);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "VPL register failed port 0\n");
 		return ret;
+	}
 
 	dev_dbg(dev, "registered vpl for %s\n", np->full_name);
 

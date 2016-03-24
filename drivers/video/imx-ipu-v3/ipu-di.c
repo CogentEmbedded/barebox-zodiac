@@ -171,7 +171,7 @@ static unsigned long clk_di_recalc_rate(struct clk *clk,
 {
 	struct ipu_di *di = container_of(clk, struct ipu_di, clk_di_pixel);
 	unsigned long outrate;
-	u32 div = ipu_di_read(di, DI_BS_CLKGEN0);
+	u32 div = ipu_di_read(di, DI_BS_CLKGEN0) & 0xffff;
 
 	if (div < 0x10)
 		div = 0x10;
@@ -533,6 +533,8 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 
 	dev_dbg(di->ipu->dev, "disp %d: panel size = %d x %d, pixelclock = %ld\n",
 		di->id, sig->width, sig->height, sig->pixelclock);
+	printf("disp %d: panel size = %d x %d, pixelclock = %ld\n",
+		di->id, sig->width, sig->height, sig->pixelclock);
 
 	if ((sig->v_sync_width == 0) || (sig->h_sync_width == 0))
 		return -EINVAL;
@@ -563,7 +565,8 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 		round = sig->pixelclock;
 	}
 
-	ret = clk_set_rate(&di->clk_di_pixel, round);
+	ret = clk_set_rate(&di->clk_di_pixel, round / 2);
+	printf("clock rate %lu\n", clk_get_rate(&di->clk_di_pixel));
 
 	h_total = sig->width + sig->h_sync_width + sig->h_start_width +
 		sig->h_end_width;
@@ -584,6 +587,7 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 	di_gen |= DI_GEN_DI_VSYNC_EXT;
 
 	if (sig->interlaced) {
+		printf("!!!Interlaced\n");
 		ipu_di_sync_config_interlaced(di, sig);
 
 		/* set y_sel = 1 */
@@ -598,16 +602,21 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 		if (sig->Vsync_pol)
 			di_gen |= DI_GEN_POLARITY_2;
 	} else {
+		printf("!!!Non-interlaced\n");
+		printf("hsync_pin = %d\n", sig->hsync_pin);
+		printf("vsync_pin = %d\n", sig->vsync_pin);
 		ipu_di_sync_config_noninterlaced(di, sig, div);
 
 		vsync_cnt = 3;
-		if (di->id == 1)
+		if (di->id == 1) {
 			/*
 			 * TODO: change only for TVEv2, parallel display
 			 * uses pin 2 / 3
 			 */
+			printf("!Ups!\n");
 			if (!(sig->hsync_pin == 2 && sig->vsync_pin == 3))
 				vsync_cnt = 6;
+		}
 
 		if (sig->Hsync_pol) {
 			if (sig->hsync_pin == 2)
@@ -627,6 +636,8 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 		}
 	}
 
+	sig->clk_pol = 1;
+	printf("clk_pol = %d\n", sig->clk_pol);
 	if (sig->clk_pol)
 		di_gen |= DI_GEN_POLARITY_DISP_CLK;
 
@@ -729,7 +740,7 @@ int ipu_di_init(struct ipu_soc *ipu, struct device_d *dev, int id,
 	di->di_parent_names[0] = di->clk_ipu->name;
 	di->di_parent_names[1] = di->clk_di->name;
 
-	ipu_di_write(di, 0x10, DI_BS_CLKGEN0);
+	ipu_di_write(di, 0x10 /*| (1 << 16)*/, DI_BS_CLKGEN0);
 
 	di->clk_di_pixel.parent_names = di->di_parent_names;
 	di->clk_name = asprintf("%s_di%d_pixel",
