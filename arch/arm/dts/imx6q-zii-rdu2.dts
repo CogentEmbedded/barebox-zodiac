@@ -105,32 +105,6 @@
 			};
 		};
 	};
-
-	lcd_display: display@di0 {
-		compatible = "fsl,imx-parallel-display";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		interface-pix-fmt = "rgb24";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_rgb_disp>;
-		status = "okay";
-
-		port@0 {
-			reg = <0>;
-
-			imx_display_in: endpoint {
-				remote-endpoint = <&ipu1_di0_disp0>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-
-			imx_display_out: endpoint {
-				remote-endpoint = <&tc358767_in>;
-			};
-		};
-	};
 };
 
 &fec {
@@ -189,7 +163,6 @@
 				MX6QDL_PAD_CSI0_DAT14__GPIO6_IO00	0x1b0b0 /*TP44*/
 				MX6QDL_PAD_CSI0_DAT15__GPIO6_IO01	0x1b0b0 /*TP45*/
 				MX6QDL_PAD_CSI0_DAT16__GPIO6_IO02	0x1b0b0 /*TP46*/
-				MX6QDL_PAD_DI0_PIN4__GPIO4_IO20		0x1b0b0 /*TP41*/
 
 				/* System Type */
 				MX6QDL_PAD_EIM_D26__GPIO3_IO26		0x1b0b0 /*SYS_TYPE_3*/
@@ -384,35 +357,36 @@
 
 		pinctrl_rgb_disp: j15grp {
 			fsl,pins = <
-				MX6QDL_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK 0x10
-				MX6QDL_PAD_DI0_PIN15__IPU1_DI0_PIN15       0x10
-				MX6QDL_PAD_DI0_PIN2__IPU1_DI0_PIN02        0x10
-				MX6QDL_PAD_DI0_PIN3__IPU1_DI0_PIN03        0x10
-				MX6QDL_PAD_DI0_PIN4__IPU1_DI0_PIN04        0x10
-				MX6QDL_PAD_DISP0_DAT0__IPU1_DISP0_DATA00   0x10
-				MX6QDL_PAD_DISP0_DAT1__IPU1_DISP0_DATA01   0x10
-				MX6QDL_PAD_DISP0_DAT2__IPU1_DISP0_DATA02   0x10
-				MX6QDL_PAD_DISP0_DAT3__IPU1_DISP0_DATA03   0x10
-				MX6QDL_PAD_DISP0_DAT4__IPU1_DISP0_DATA04   0x10
-				MX6QDL_PAD_DISP0_DAT5__IPU1_DISP0_DATA05   0x10
-				MX6QDL_PAD_DISP0_DAT6__IPU1_DISP0_DATA06   0x10
-				MX6QDL_PAD_DISP0_DAT7__IPU1_DISP0_DATA07   0x10
-				MX6QDL_PAD_DISP0_DAT8__IPU1_DISP0_DATA08   0x10
-				MX6QDL_PAD_DISP0_DAT9__IPU1_DISP0_DATA09   0x10
-				MX6QDL_PAD_DISP0_DAT10__IPU1_DISP0_DATA10  0x10
-				MX6QDL_PAD_DISP0_DAT11__IPU1_DISP0_DATA11  0x10
-				MX6QDL_PAD_DISP0_DAT12__IPU1_DISP0_DATA12  0x10
-				MX6QDL_PAD_DISP0_DAT13__IPU1_DISP0_DATA13  0x10
-				MX6QDL_PAD_DISP0_DAT14__IPU1_DISP0_DATA14  0x10
-				MX6QDL_PAD_DISP0_DAT15__IPU1_DISP0_DATA15  0x10
-				MX6QDL_PAD_DISP0_DAT16__IPU1_DISP0_DATA16  0x10
-				MX6QDL_PAD_DISP0_DAT17__IPU1_DISP0_DATA17  0x10
-				MX6QDL_PAD_DISP0_DAT18__IPU1_DISP0_DATA18  0x10
-				MX6QDL_PAD_DISP0_DAT19__IPU1_DISP0_DATA19  0x10
-				MX6QDL_PAD_DISP0_DAT20__IPU1_DISP0_DATA20  0x10
-				MX6QDL_PAD_DISP0_DAT21__IPU1_DISP0_DATA21  0x10
-				MX6QDL_PAD_DISP0_DAT22__IPU1_DISP0_DATA22  0x10
-				MX6QDL_PAD_DISP0_DAT23__IPU1_DISP0_DATA23  0x10
+				MX6QDL_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK 0x100f9
+				MX6QDL_PAD_DI0_PIN15__IPU1_DI0_PIN15       0x100f9
+				MX6QDL_PAD_DI0_PIN2__IPU1_DI0_PIN02        0x100f9
+				MX6QDL_PAD_DI0_PIN3__IPU1_DI0_PIN03        0x100f9
+				MX6QDL_PAD_DISP0_DAT0__IPU1_DISP0_DATA00   0x100f9
+				MX6QDL_PAD_DISP0_DAT1__IPU1_DISP0_DATA01   0x100f9
+				MX6QDL_PAD_DISP0_DAT2__IPU1_DISP0_DATA02   0x100f9
+				MX6QDL_PAD_DISP0_DAT3__IPU1_DISP0_DATA03   0x100f9
+				MX6QDL_PAD_DISP0_DAT4__IPU1_DISP0_DATA04   0x100f9
+				MX6QDL_PAD_DISP0_DAT5__IPU1_DISP0_DATA05   0x100f9
+				MX6QDL_PAD_DISP0_DAT6__IPU1_DISP0_DATA06   0x100f9
+				MX6QDL_PAD_DISP0_DAT7__IPU1_DISP0_DATA07   0x100f9
+				MX6QDL_PAD_DISP0_DAT8__IPU1_DISP0_DATA08   0x100f9
+				MX6QDL_PAD_DISP0_DAT9__IPU1_DISP0_DATA09   0x100f9
+				MX6QDL_PAD_DISP0_DAT10__IPU1_DISP0_DATA10  0x100f9
+				MX6QDL_PAD_DISP0_DAT11__IPU1_DISP0_DATA11  0x100f9
+				MX6QDL_PAD_DISP0_DAT12__IPU1_DISP0_DATA12  0x100f9
+				MX6QDL_PAD_DISP0_DAT13__IPU1_DISP0_DATA13  0x100f9
+				MX6QDL_PAD_DISP0_DAT14__IPU1_DISP0_DATA14  0x100f9
+				MX6QDL_PAD_DISP0_DAT15__IPU1_DISP0_DATA15  0x100f9
+				MX6QDL_PAD_DISP0_DAT16__IPU1_DISP0_DATA16  0x100f9
+				MX6QDL_PAD_DISP0_DAT17__IPU1_DISP0_DATA17  0x100f9
+				MX6QDL_PAD_DISP0_DAT18__IPU1_DISP0_DATA18  0x100f9
+				MX6QDL_PAD_DISP0_DAT19__IPU1_DISP0_DATA19  0x100f9
+				MX6QDL_PAD_DISP0_DAT20__IPU1_DISP0_DATA20  0x100f9
+				MX6QDL_PAD_DISP0_DAT21__IPU1_DISP0_DATA21  0x100f9
+				MX6QDL_PAD_DISP0_DAT22__IPU1_DISP0_DATA22  0x100f9
+				MX6QDL_PAD_DISP0_DAT23__IPU1_DISP0_DATA23  0x100f9
+				/* SD pin */
+				MX6QDL_PAD_GPIO_9__GPIO1_IO09              0x10
 			>;
 		};
 	};
@@ -462,12 +436,15 @@
 		#size-cells = <0>;
 		compatible = "tc358767";
 		reg = <0x68>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_rgb_disp>;
+		sd-gpios = <&gpio1 9 0>;
 
 		port@0 {
 			reg = <0>;
 
 			tc358767_in: endpoint {
-				remote-endpoint = <&imx_display_out>;
+				remote-endpoint = <&ipu1_di0_disp0>;
 			};
 		};
 	};
@@ -643,36 +620,11 @@
 };
 
 &ipu1_di0_disp0 {
-	remote-endpoint = <&imx_display_in>;
+	remote-endpoint = <&tc358767_in>;
 };
 
 &ldb {
 	status = "okay";
-
-	lvds-channel@0 {
-		fsl,data-mapping = "spwg";
-		fsl,data-width = <24>;
-		crtc = "ipu2-di0";
-		status = "okay";
-		primary;
-
-		display-timings {
-			native-mode = <&timing_innolux_10_1>;
-			timing_innolux_10_1: innolux_10_1 {
-				clock-frequency = <71100000>;
-				hactive 	= <1280>;
-				vactive 	= <800>;
-				hback-porch 	= <40>;
-				hfront-porch 	= <40>;
-				vback-porch 	= <10>;
-				vfront-porch 	= <3>;
-				hsync-len 	= <80>;
-				vsync-len 	= <10>;
-				de-active 	= <1>;
-				pixelclk-active = <1>;
-			};
-		};
-	};
 };
 
 &pcie {
