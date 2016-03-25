@@ -1568,7 +1568,7 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 
 		ipu_mode = ptr;
 
-		ipu_mode->di_clkflags = IPU_DI_CLKMODE_SYNC;
+		ipu_mode->di_clkflags = IPU_DI_CLKMODE_NON_FRACTIONAL;
 		ipu_mode->interface_pix_fmt = V4L2_PIX_FMT_RGB24;
 	break;
 		
