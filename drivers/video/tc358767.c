@@ -30,6 +30,9 @@
 #include <video/vpl.h>
 #include <video/fourcc.h>
 
+/* gcd */
+#include <linux/gcd.h>
+
 /* hack */
 #include "imx-ipu-v3/imx-ipu-v3.h"
 
@@ -129,6 +132,8 @@ struct tc_data {
 
 	/* pxl_pll */
 	u32			pxl_pll;
+	/* real pixeclock */
+	u32			pxl_clk;
 
 	u32			rev;
 	u8			assr;
@@ -314,13 +319,7 @@ static int tc_aux_write(struct tc_data *tc, int reg, char *data, int size)
 	ret = tc_aux_i2c_get_status(tc);
 	if (ret)
 		goto err;
-/*
-	tc_aux_read(tc, reg, read_back, size);
-	for (i = 0; i < size; i++)
-		if (data[i] != read_back[i])
-			printf("Readback failed reg 0x%06x: %02x != %02x\n",
-				reg + i, data[i], read_back[i]);
-*/
+
 	return 0;
 err:
 	dev_err(tc->dev, "tc_aux_write error: %d\n", ret);
@@ -487,20 +486,10 @@ static u32 tc_srcctrl(struct tc_data *tc)
 	return reg;
 }
 
-u32 NOD(u32 a, u32 b)
-{
-	while(a > 0 && b > 0) {
-		if(a > b)
-			a %= b;
-		else
-			b %= a;
-		}
-	return a + b;
-}
-
-static int tc_calc_pll(struct tc_data *tc, u32 refclk, int pixelclock)
+static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk, int pixelclock)
 {
 	int ret;
+	//int pixelclock;
 	int i_pre, best_pre = 1;
 	int i_post, best_post = 1;
 	int div, best_div = 1;
@@ -569,8 +558,6 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, int pixelclock)
 		refclk, e_pre_div[best_pre], best_div,
 		best_mul, e_post_div[best_post]);
 
-	tc->pxl_pll = best_pixelclock;
-
 	/* if VCO >= 300 MHz */
 	if (refclk / e_pre_div[best_pre] / best_div * best_mul >=
 		300000000)
@@ -602,25 +589,61 @@ static int tc_calc_pll(struct tc_data *tc, u32 refclk, int pixelclock)
 	/* ? */
 	mdelay(100);
 
+	/* save */
+	tc->pxl_pll = best_pixelclock;
+
+	return 0;
+err:
+	return ret;
+}
+
+static int tc_pxl_pll_dis(struct tc_data *tc)
+{
+	int ret;
+
+	tc_write(PXL_PLLCTRL,
+		(1 << 1) |	/* PLL bypass enable */
+		(0 << 0) |	/* Disable PLL */
+		0);
+
+	return 0;
+err:
+	return ret;
+}
+
+static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
+{
+	int ret;
+	u32 N;
+	u32 ls;
 	/*
 	 * If the Stream clock and Link Symbol clock are asynchronous with each other, the value of M changes over
 	 * time. This way of generating link clock and stream clock is called Asynchronous Clock mode. The value M
 	 * must change while the value N stays constant. The value of N in this Asynchronous Clock mode must be set
 	 * to 2^15 or 32,768.
+	 *
+	 * LSCLK = 1/10 of high speed link clock
+	 *
+	 * f_STRMCLK = M/N * f_LSCLK
+	 *
 	 */
-	/* calc M and N for clock recovery */
-	if (1) {
-		u32 N;
-		u32 ls;
-		if (tc->link.rate == 0x0a)
-			ls = 2700000000u;
-		else
-			ls = 1420000000u;
-
-		N = NOD(tc->pxl_pll, ls);
-		/* for 132 MHz pixelclock */
-		tc_write(DP0_VIDMNGEN1, N);
+	if (tc->link.rate == 0x0a)
+		ls = 2700000000u / 10;
+	else
+		ls = 1420000000u / 10;
+	/* round up to 10 KHz - should not matter */
+	streamclk = (streamclk / 100000) * 100000;
+	N = gcd(streamclk, ls);
+#if 0
+	/* in case N too low */
+	if (N < 1000) {
+		/* round up to 10 KHz - should not matter */
+		streamclk = streamclk / 10000 * 10000;
+		N = gcd(streamclk, ls);
 	}
+#endif
+	printf("!!! N = %u\n", N);
+	tc_write(DP0_VIDMNGEN1, N);
 
 	return 0;
 err:
@@ -634,6 +657,16 @@ static int tc_test_pattern(struct tc_data *tc, unsigned int type)
 
 	if (type > 3)
 		return -EINVAL;
+
+	if (type) {
+		if (!tc->pxl_pll)
+			tc->pxl_pll = tc->pxl_clk;
+		ret = tc_pxl_pll_en(tc, 19200000, tc->pxl_pll);
+	} else {
+		ret = tc_pxl_pll_dis(tc);
+	}
+	if (ret)
+		goto err;
 
 	/* set type */
 	tc_read(TSTCTL, &value);
@@ -1283,22 +1316,16 @@ err:
 static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 {
 	int ret;
-	//u32 value;
 	int htotal;
 	int vtotal;
+	int vid_sync_dly;
 
 	printf("set mode %dx%d\n", mode->xres, mode->yres);
 	printf("H margin %d,%d sync %d\n",
 		mode->left_margin, mode->right_margin, mode->hsync_len);
 	printf("V margin %d,%d sync %d\n",
 		mode->upper_margin, mode->lower_margin, mode->vsync_len);
-/*
-	ret = tc_calc_pll(tc, 19200000, PICOS2KHZ(mode->pixclock) * 1000UL);
-	if (ret) {
-		dev_err(tc->dev, "failed to set PLL\n");
-		goto err;
-	}
-*/
+
 	htotal = mode->hsync_len + mode->left_margin + mode->xres +
 		mode->right_margin;
 	vtotal = mode->vsync_len + mode->upper_margin + mode->yres +
@@ -1345,9 +1372,12 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 	//tc_write(DP0_VIDSYNCDELAY, (0x003e << 16) | 0x07f0);
 	//printf("Sync delay %d\n", mode->hsync_len + mode->left_margin + mode->xres);
 	//printf("Htotal = %d, not %d\n", htotal, 0x07f0);
+	vid_sync_dly = mode->hsync_len + mode->left_margin + mode->xres;
 	tc_write(DP0_VIDSYNCDELAY, 
-		((0x003e) << 16) | 
-		((mode->hsync_len + mode->left_margin + mode->xres) << 0));
+		//(0x003e << 16) | 	/* thresh_dly */
+		(0x004e << 16) | 	/* thresh_dly */
+		(vid_sync_dly << 0)|	/* vid_sync_dly */
+		0);
 	//tc_write(DP0_VIDMNGEN0, 0x0); /* audio sync stuff */
 
 	tc_write(DP0_TOTALVAL, (vtotal << 16) | (htotal));
@@ -1359,9 +1389,9 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 	tc_write(DP0_ACTIVEVAL, (mode->yres << 16) | (mode->xres));
 
 	tc_write(DP0_SYNCVAL,
-		(1 << 31)|			/* Vsync active low */
+		//(1 << 31)|			/* Vsync active low */
 		(mode->vsync_len << 16)|	/* Vsync width */
-		(1 << 15)|			/* Hsync active low */
+		//(1 << 15)|			/* Hsync active low */
 		(mode->hsync_len << 0)|		/* Hsync width */
 		0);
 #if 0
@@ -1397,6 +1427,8 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 #endif
 		0);
 #endif
+	/* save clock, get this vaule directly from DI */
+	tc->pxl_clk = PICOS2KHZ(mode->pixclock) * 1000UL / 2;
 
 	return 0;
 err:
@@ -1477,22 +1509,33 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 	case VPL_PREPARE:
 		dev_dbg(tc->dev, "VPL_PREPARE\n");
 		mode = ptr;
-		ret = tc_calc_pll(tc, 19200000, PICOS2KHZ(mode->pixclock) * 1000UL);
-		if (ret)
-			break;
-		ret = tc_main_link_setup(tc, 0);
-		if (ret < 0)
-			break;
 		ret = tc_set_video_mode(tc, mode);
-		if (ret < 0)
-			break;
-		ret = tc_main_link_stream(tc, 1);
 		if (ret < 0)
 			break;
 
 		goto forward;
 	case VPL_ENABLE:
 		dev_dbg(tc->dev, "VPL_ENABLE\n");
+		/* only for DSI interface or test pattern generator */
+		if (1) {
+			ret = tc_pxl_pll_en(tc, 19200000, tc->pxl_clk);
+			if (ret)
+				break;
+		}
+		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
+		if (ret < 0)
+			break;
+		ret = tc_main_link_setup(tc, 0);
+		if (ret < 0)
+			break;
+		ret = tc_main_link_stream(tc, 1);
+		if (ret < 0)
+			break;
+		mdelay(100);
+		printf("pxl_clk %d\n", tc->pxl_clk);
+		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
+		if (ret < 0)
+			break;
 /*
 		ret = tc_main_link_setup(tc, 0);
 		if (ret < 0)
@@ -1503,7 +1546,7 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 
 		udelay(100);
 */
-		tc_debug_dump(tc);
+		//tc_debug_dump(tc);
 
 		goto forward;
 	case VPL_DISABLE:
@@ -1606,11 +1649,15 @@ static int do_edp_debug(int argc, char *argv[])
 			goto err;
 	}
 
+	/* PXL_PLL used for DSI interface and test pattern generator */
 	if ((argc == 3) && (!strcmp(argv[1], "c"))) {
 		int clock;
 
 		clock = simple_strtol(argv[2], NULL, 0);
-		ret = tc_calc_pll(tc, 19200000, clock);
+		ret = tc_pxl_pll_en(tc, 19200000, clock);
+		if (ret)
+			goto err;
+		ret = tc_stream_clock_calc(tc, clock);
 		if (ret)
 			goto err;
 	}
@@ -1719,6 +1766,8 @@ static int tc_probe(struct device_d *dev)
 	if (ret)
 		return ret;
 
+	/* set defaults */
+	tc->pxl_pll = 80000000;	/* pll used in DSI mode and for test pattern */
 	/* pre-read edid */
 	ret = tc_read_edid(tc);
 	/* ignore it for now */
