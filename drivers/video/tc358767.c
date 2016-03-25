@@ -1047,6 +1047,8 @@ retry__:
 	/* ----Clear DPCD 00102h-------- */
 	/* Note: Can Not use DP0_SNKLTCTRL (0x06E4) short cut */
 	tmp[0] = 0x00;
+	if (tc->link.scrambler_dis)
+		tmp[0] |= 0x20;
 	ret = tc_aux_write(tc, 0x000102, tmp, 1); /* TRAINING_PATTERN_SET */
 	if (ret)
 		goto err_dpcd_write;
