@@ -41,6 +41,7 @@
 #include <command.h>
 
 //#define TEST_BAR		999
+#define AUTO_MN			999
 
 /* registers */
 #define DPIPXLFMT		0x0440
@@ -131,8 +132,6 @@ struct tc_data {
 	/* link settings */
 	struct edp_link		link;
 
-	/* pxl_pll */
-	u32			pxl_pll;
 	/* real pixeclock */
 	u32			pxl_clk;
 
@@ -479,10 +478,10 @@ static u32 tc_srcctrl(struct tc_data *tc)
 	if (tc->link.coding8b10b)
 		reg |= DP0_SRCCTRL_EN810B;	/* Enable 8/10B Encoder (TxData[19:16] not used) */
 	if (tc->link.spread)
-		reg |= DP0_SRCCTRL_SSCG;	/* Spread Spectrum Disabled (default) */
+		reg |= DP0_SRCCTRL_SSCG;	/* Spread Spectrum Enable */
 	if (tc->link.lanes == 2)
 		reg |= DP0_SRCCTRL_LANES_2;	/* Two Main Channel Lanes */
-	if (tc->link.rate == 0x0A)
+	if (tc->link.rate != 0x06)
 		reg |= DP0_SRCCTRL_BW27;	/* 2.7 Gbps link */
 	return reg;
 }
@@ -593,7 +592,7 @@ static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk, int pixelclock)
 	mdelay(100);
 
 	/* save */
-	tc->pxl_pll = best_pixelclock;
+	tc->pxl_clk = best_pixelclock;
 
 	return 0;
 err:
@@ -651,6 +650,7 @@ static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
 		N = gcd(streamclk, ls);
 	}
 #endif
+	/* from exel file */
 	if (N < 10) {
 		M *= 20; N *= 20;
 	} else if (N < 20) {
@@ -679,9 +679,7 @@ static int tc_test_pattern(struct tc_data *tc, unsigned int type)
 		return -EINVAL;
 
 	if (type) {
-		if (!tc->pxl_pll)
-			tc->pxl_pll = tc->pxl_clk;
-		ret = tc_pxl_pll_en(tc, 19200000, tc->pxl_pll);
+		ret = tc_pxl_pll_en(tc, 19200000, tc->pxl_clk);
 	} else {
 		ret = tc_pxl_pll_dis(tc);
 	}
@@ -735,6 +733,7 @@ static int tc_aux_link_setup(struct tc_data *tc)
 	/* wait PLL lock */
 	mdelay(100);
 	tc_write(0x0904, 0x00000005);	//???
+	mdelay(100);
 
 	timeout = 1000;
 	do {
@@ -760,7 +759,7 @@ err:
 	return ret;
 }
 
-static int tc_main_link_setup(struct tc_data *tc, int retry_loop)
+static int tc_main_link_setup(struct tc_data *tc)
 {
 	int ret;
 	u32 value;
@@ -776,11 +775,6 @@ static int tc_main_link_setup(struct tc_data *tc, int retry_loop)
 	value = value | (1 << 5);
 	tc_write(DP0_MISC, value);
 
-#if 0
-	/* ----Setup AUX link */
-	tc_write(DP0_AUXCFG1, 0x0001063F);
-#endif
-
 	/* ----Read DP Rx Link Capability-------- */
 	ret = tc_aux_read(tc, 0x000000, tmp, 8);
 	if (ret)
@@ -793,7 +787,6 @@ static int tc_main_link_setup(struct tc_data *tc, int retry_loop)
 	tc->link.rev = tmp[0];
 	tc->link.rate = tmp[1];
 	tc->link.lanes = tmp[2] & 0x0f;
-	//tc->link.lanes = 1;
 	tc->link.enhanced = !!(tmp[2] & 0x80);
 	tc->link.spread = tmp[3] & 0x01;
 	tc->link.spread = 0;
@@ -841,8 +834,6 @@ static int tc_main_link_setup(struct tc_data *tc, int retry_loop)
 				tc->assr);
 			/* trying with disabled scrambler */
 			tc->link.scrambler_dis = 1;
-			//tc->link.coding8b10b = 0;
-			//return -EINVAL;
 		}
 	}
 
@@ -885,7 +876,6 @@ static int tc_main_link_setup(struct tc_data *tc, int retry_loop)
 	printf("Reg DP_PHY_CTRL 0x%08x (should be 0x%08x)\n",
 		value, 0x03010007);
 
-retry__:
 	/* ----Setup Link & DPRx Config for Training-------- */
 	/* LINK_BW_SET */
 	tmp[0] = tc->link.rate;
@@ -912,20 +902,17 @@ retry__:
 
 	/* ----Set DPCD 00102h for Training Pat 1-------- */
 	tc_write(DP0_SNKLTCTRL, 0x00000021);
-	//tc_write(DP0_SNKLTCTRL, 0x00000001);
-	//tc_write(DP0_LTLOOPCTRL, 0xF600000D);
 	tc_write(DP0_LTLOOPCTRL,
 		(0x0f << 28)|	/* Defer Iteration Count */
-		//(0x06 << 24)|	/* Loop Iteration Count */
 		(0x0f << 24)|	/* Loop Iteration Count */
 		(0x0d << 0)|	/* Loop Timer Delay ??? */
-		//(0xffff << 0)|	/* Loop Timer Delay ??? */
 		0);
 
+	/* from exel file - DP1_SrcCtrl */
+	tc_write(0x07a0, 0x0003083);
 	retry = 5;
 	do {
 		/* ----Set DP0 Trainin Pattern 1-------- */
-		//tc_write(DP0_SRCCTRL, 0x00003187);
 		tc_write(DP0_SRCCTRL, tc_srcctrl(tc) |
 			DP0_SRCCTRL_SCRMBLDIS |		/* Scrambler Disabled */
 			DP0_SRCCTRL_TP1 |		/* Training Pattern 1 */
@@ -934,11 +921,8 @@ retry__:
 			0);
 
 		/* ----Enable DP0 to start Link Training-------- */
-		tc_write(DP0CTL,
-			//(1 << 6) |	/* enable the auto-generation of M/N values for video */
-			0x00000001);
+		tc_write(DP0CTL, 0x00000001);
 
-		//udelay(10);
 		/* wait */
 		timeout = 1000;
 		do {
@@ -948,17 +932,9 @@ retry__:
 		if (timeout == 0) {
 			dev_err(tc->dev, "training timeout!\n");
 		} else {
-			u32 tmpreg;
 			printf("Link training phase %d done after %d uS: %s\n",
 				(value >> 11) & 0x03, 1000 - timeout,
 				training_1_errors[(value >> 8) & 0x07]);
-#if 0
-			printf(" result: 0x%02x\n", value &0xff);
-			tc_read(DP0_SRCCTRL, &tmpreg);
-			printf(" DP0_SRCCTRL: 0x%08x\n", tmpreg);
-			tc_read(DP0_SNKLTCHGREQ, &tmpreg);
-			printf(" DP0_SNKLTCHGREQ: 0x%08x\n", tmpreg);
-#endif
 			if (((value >> 8) & 0x07) == 0)
 				break;
 		}
@@ -969,34 +945,12 @@ retry__:
 	if (retry == 0)
 		dev_err(tc->dev, "failed to finish training pohase 1\n");
 
-#if 0
-	tc_read(DP0_SNKLTCHGREQ, &ltchgreq);
-	printf(" DP0_SNKLTCHGREQ: 0x%08x\n", ltchgreq);
-	tc->link.preemp = MAX((ltchgreq >> 6) & 0x03, (ltchgreq >> 2) & 0x03);
-	tc->link.swing = MAX((ltchgreq >> 4) & 0x03, (ltchgreq >> 0) & 0x03);
-#endif
-#if 0
-	/* ----Read DPCD 0x00200-0x00206-------- */
-	ret = tc_aux_read(tc, 0x000200, tmp, 7);
-	if (ret)
-		goto err_dpcd_read;
-
-	printf("0x0200 SINK_COUNT: 0x%02x\n", tmp[0]);
-	printf("0x0201 DEVICE_SERVICE_IRQ_VECTOR: 0x%02x\n", tmp[1]);
-	printf("0x0202 LANE0_1_STATUS: 0x%02x\n", tmp[2]);
-	//printf("0x0203 LANE2_3_STATUS: 0x%02x\n", tmp[3]);
-	printf("0x0204 LANE_ALIGN__STATUS_UPDATED: 0x%02x\n", tmp[4]);
-	printf("0x0205 SINK_STATUS: 0x%02x\n", tmp[5]);
-	printf("0x0206 ADJUST_REQUEST_LANE0_1: 0x%02x\n", tmp[6]);
-#endif
 	/* ----Set DPCD 00102h for Link Traing Part 2-------- */
 	tc_write(DP0_SNKLTCTRL, 0x00000022);
-	//tc_write(DP0_SNKLTCTRL, 0x00000002);
 
 	retry = 5;
 	do {
 		/* ----Set DP0 Trainin Pattern 2-------- */
-		//tc_write(DP0_SRCCTRL, 0x00003287);
 		tc_write(DP0_SRCCTRL, tc_srcctrl(tc) |
 			DP0_SRCCTRL_SCRMBLDIS |		/* Scrambler Disabled */
 			DP0_SRCCTRL_TP2 |		/* Training Pattern 2 */
@@ -1006,11 +960,8 @@ retry__:
 
 		/* remove this after finishing debug */
 		/* ----Enable DP0 to start Link Training-------- */
-		tc_write(DP0CTL,
-			//(1 << 6) |	/* enable the auto-generation of M/N values for video */
-			0x00000001);
+		tc_write(DP0CTL, 0x00000001);
 
-		//udelay(10);
 		/* wait */
 		timeout = 1000;
 		do {
@@ -1020,17 +971,9 @@ retry__:
 		if (timeout == 0) {
 			dev_err(tc->dev, "training timeout!\n");
 		} else {
-			u32 tmpreg;
 			printf("Link training phase %d done after %d uS: %s\n",
 				(value >> 11) & 0x03, 1000 - timeout,
 				training_2_errors[(value >> 8) & 0x07]);
-#if 0
-			printf(" result: 0x%02x\n", value &0xff);
-			tc_read(DP0_SRCCTRL, &tmpreg);
-			printf(" DP0_SRCCTRL: 0x%08x\n", tmpreg);
-			tc_read(DP0_SNKLTCHGREQ, &tmpreg);
-			printf(" DP0_SNKLTCHGREQ: 0x%08x\n", tmpreg);
-#endif
 			/* in case of two lanes */
 			if (((value & 0x7f) == 0x7f) && (tc->link.lanes == 2))
 				break;
@@ -1045,25 +988,6 @@ retry__:
 	if (retry == 0)
 		dev_err(tc->dev, "failed to finish training pohase 2\n");
 
-#if 0
-	tc_read(DP0_SNKLTCHGREQ, &ltchgreq);
-	printf(" DP0_SNKLTCHGREQ: 0x%08x\n", ltchgreq);
-	tc->link.preemp = MAX((ltchgreq >> 6) & 0x03, (ltchgreq >> 2) & 0x03);
-	tc->link.swing = MAX((ltchgreq >> 4) & 0x03, (ltchgreq >> 0) & 0x03);
-#endif
-#if 0
-	/* ----Clear DP0 Training Pattern-------- */
-	//tc_write(DP0_SRCCTRL, 0x00003087);
-	tc_write(DP0_SRCCTRL, tc_srcctrl(tc) |
-		//(1 << 13)|	/* Scrambler Disabled */
-		(0 << 13)|	/* Scrambler Enabled */
-		(1 << 12)|	/* Enable 8/10B Encoder (TxData[19:16] not used) */
-		(1 << 7) |	/* skew lane 1 data by two LSCLK cycles with respect to lane 0 data */
-		//(0 << 0) |	/* AutoCorrect Mode = 0 */
-		(1 << 0) |	/* AutoCorrect Mode = 1 */
-		0);
-	mdelay(100);
-#endif
 	/* ----Clear DPCD 00102h-------- */
 	/* Note: Can Not use DP0_SNKLTCTRL (0x06E4) short cut */
 	tmp[0] = 0x00;
@@ -1076,39 +1000,42 @@ retry__:
 	//tc_write(DP0_SRCCTRL, 0x00003087);
 	tc_write(DP0_SRCCTRL, tc_srcctrl(tc) |
 		DP0_SRCCTRL_LANESKEW |		/* skew lane 1 data by two LSCLK cycles with respect to lane 0 data */
-		//(0 << 0) |	/* AutoCorrect Mode = 0 */
-		DP0_SRCCTRL_AUTOCORRECT |	/* AutoCorrect Mode = 1 */
+		DP0_SRCCTRL_AUTOCORRECT |	/* Need? AutoCorrect Mode = 1 */
 		0);
 
-	/* ----Read DPCD 0x00200-0x00206-------- */
-	ret = tc_aux_read(tc, 0x000200, tmp, 7);
-	if (ret)
-		goto err_dpcd_read;
+	/* wait */
+	timeout = 1000;
+	do {
+		udelay(1);
+		/* ----Read DPCD 0x00200-0x00206-------- */
+		ret = tc_aux_read(tc, 0x000200, tmp, 7);
+		if (ret)
+			goto err_dpcd_read;
+	} while ((--timeout) &&
+		((tmp[2] != 0x77) ||
+		 ((tmp[4] & 0x01) != 0x01)/* ||
+		 ((tmp[5] & 0x01) != 0x01)*/));
 
-	printf("0x0200 SINK_COUNT: 0x%02x\n", tmp[0]);
-	printf("0x0201 DEVICE_SERVICE_IRQ_VECTOR: 0x%02x\n", tmp[1]);
-	printf("0x0202 LANE0_1_STATUS: 0x%02x\n", tmp[2]);
-	//printf("0x0203 LANE2_3_STATUS: 0x%02x\n", tmp[3]);
-	printf("0x0204 LANE_ALIGN__STATUS_UPDATED: 0x%02x\n", tmp[4]);
-	printf("0x0205 SINK_STATUS: 0x%02x\n", tmp[5]);
-	printf("0x0206 ADJUST_REQUEST_LANE0_1: 0x%02x\n", tmp[6]);
+	if (timeout == 0) {
+		printf("0x0200 SINK_COUNT: 0x%02x\n", tmp[0]);
+		printf("0x0201 DEVICE_SERVICE_IRQ_VECTOR: 0x%02x\n", tmp[1]);
+		printf("0x0202 LANE0_1_STATUS: 0x%02x\n", tmp[2]);
+		//printf("0x0203 LANE2_3_STATUS: 0x%02x\n", tmp[3]);
+		printf("0x0204 LANE_ALIGN__STATUS_UPDATED: 0x%02x\n", tmp[4]);
+		printf("0x0205 SINK_STATUS: 0x%02x\n", tmp[5]);
+		printf("0x0206 ADJUST_REQUEST_LANE0_1: 0x%02x\n", tmp[6]);
 
-	if (tmp[2] != 0x77) {
-		dev_err(tc->dev, "Lane0/1 not ready\n");
-		//return -EAGAIN;
+		if (tmp[2] != 0x77)
+			dev_err(tc->dev, "Lane0/1 not ready\n");
+		if ((tmp[4] & 0x01) != 0x01)
+			dev_err(tc->dev, "Lane0/1 not aligned\n");
+		/*
+		if ((tmp[5] & 0x01) != 0x01)
+			dev_err(tc->dev, "Sink not ready\n");
+		*/
+		return -EAGAIN;
 	}
-	if ((tmp[4] & 0x01) != 0x01) {
-		dev_err(tc->dev, "Lane0/1 not aligned\n");
-		//return -EAGAIN;
-	}
 
-	if ((tmp[5] & 0x01) != 0x01) {
-		dev_err(tc->dev, "Sink not ready\n");
-		//return -EAGAIN;
-	}
-
-	if ((retry_loop) && (!tmp[5]))
-		goto retry__;
 #if 0
 	/* disable power down mode */
 	tmp[0] = 0x01;
@@ -1173,6 +1100,9 @@ static int tc_get_videomodes(struct tc_data *tc, struct display_timings *timings
 {
 	int ret;
 #if 0
+	/*
+	 * does not work due to limitation of eDP i2c
+	 */
 	timings->edid = edid_read_i2c(&tc->adapter);
 	if (!timings->edid)
 		return -EINVAL;
@@ -1538,6 +1468,9 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 		goto forward;
 	case VPL_ENABLE:
 		dev_dbg(tc->dev, "VPL_ENABLE\n");
+		ret = tc_main_link_setup(tc);
+		if (ret < 0)
+			break;
 		/* only for DSI interface or test pattern generator */
 		if (1) {
 			ret = tc_pxl_pll_en(tc, 19200000, tc->pxl_clk);
@@ -1547,19 +1480,18 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
 		if (ret < 0)
 			break;
-		ret = tc_main_link_setup(tc, 0);
-		if (ret < 0)
-			break;
 		ret = tc_main_link_stream(tc, 1);
 		if (ret < 0)
 			break;
 		mdelay(100);
 		printf("pxl_clk %d\n", tc->pxl_clk);
+/*
 		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
 		if (ret < 0)
 			break;
+*/
 /*
-		ret = tc_main_link_setup(tc, 0);
+		ret = tc_main_link_setup(tc);
 		if (ret < 0)
 			break;
 		ret = tc_main_link_stream(tc, 1);
@@ -1621,14 +1553,7 @@ static int do_edp_debug(int argc, char *argv[])
 	}
 
 	if ((argc == 2) && (!strcmp(argv[1], "s"))) {
-		tc_main_link_setup(tc, 0);
-		tc_main_link_stream(tc, 1);
-		tc_debug_dump(tc);
-		return 0;
-	}
-	
-	if ((argc == 2) && (!strcmp(argv[1], "ss"))) {
-		tc_main_link_setup(tc, 1);
+		tc_main_link_setup(tc);
 		tc_main_link_stream(tc, 1);
 		tc_debug_dump(tc);
 		return 0;
@@ -1676,12 +1601,18 @@ static int do_edp_debug(int argc, char *argv[])
 		int clock;
 
 		clock = simple_strtol(argv[2], NULL, 0);
+		/* hack */
+		tc->pxl_clk = clock;
 		ret = tc_pxl_pll_en(tc, 19200000, clock);
 		if (ret)
 			goto err;
+		/* stream off */
+		tc_main_link_stream(tc, 0);
 		ret = tc_stream_clock_calc(tc, clock);
 		if (ret)
 			goto err;
+		/* stream off */
+		tc_main_link_stream(tc, 1);
 	}
 
 	if ((argc == 3) && (!strcmp(argv[1], "t"))) {
@@ -1789,7 +1720,7 @@ static int tc_probe(struct device_d *dev)
 		return ret;
 
 	/* set defaults */
-	tc->pxl_pll = 80000000;	/* pll used in DSI mode and for test pattern */
+	tc->pxl_clk = 80000000;	/* pll used for test pattern */
 	/* pre-read edid */
 	ret = tc_read_edid(tc);
 	/* ignore it for now */
