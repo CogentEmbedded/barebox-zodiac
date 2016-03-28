@@ -29,6 +29,7 @@
 #include <of_gpio.h>
 #include <video/vpl.h>
 #include <video/fourcc.h>
+#include <asm-generic/div64.h>
 
 /* gcd */
 #include <linux/gcd.h>
@@ -510,9 +511,11 @@ static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk, int pixelclock)
 			continue;
 		for (i_post = 0; i_post < ARRAY_SIZE(e_post_div); i_post++) {
 			for (div = 1; div <= 16; div++) {
-				int clk;
-				mul = pixelclock * e_pre_div[i_pre] * e_post_div[i_post] *
-					div / refclk;
+				u32 clk;
+				u64 tmp;
+				tmp = pixelclock * e_pre_div[i_pre] * e_post_div[i_post] * div;
+				do_div(tmp, refclk);
+				mul = tmp;
 
 				/* do we accept negative delta? */
 #if 0
@@ -611,10 +614,13 @@ err:
 	return ret;
 }
 
+#define CLOCK_ROUND	10000
 static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
 {
 	int ret;
+	u32 g;
 	u32 N;
+	u32 M;
 	u32 ls;
 	/*
 	 * If the Stream clock and Link Symbol clock are asynchronous with each other, the value of M changes over
@@ -625,15 +631,18 @@ static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
 	 * LSCLK = 1/10 of high speed link clock
 	 *
 	 * f_STRMCLK = M/N * f_LSCLK
+	 * M/N = f_STRMCLK / f_LSCLK
 	 *
 	 */
 	if (tc->link.rate == 0x0a)
-		ls = 2700000000u / 10;
+		ls = 270000000u; /* 270 MHz */
 	else
-		ls = 1420000000u / 10;
-	/* round up to 10 KHz - should not matter */
-	streamclk = (streamclk / 100000) * 100000;
-	N = gcd(streamclk, ls);
+		ls = 162000000u; /* 162 MHz */
+	/* round up - should not matter */
+	//streamclk = (streamclk / CLOCK_ROUND) * CLOCK_ROUND;
+	g = gcd(streamclk, ls);
+	N = ls / g;
+	M = streamclk / g;
 #if 0
 	/* in case N too low */
 	if (N < 1000) {
@@ -642,8 +651,19 @@ static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
 		N = gcd(streamclk, ls);
 	}
 #endif
-	printf("!!! N = %u\n", N);
+	if (N < 10) {
+		M *= 20; N *= 20;
+	} else if (N < 20) {
+		M *= 10; N *= 10;
+	} else if (N < 40) {
+		M *= 5;  N *= 5;
+	} else if (N < 100) {
+		M *= 2;  N *= 2;
+	}
+	printf("!!! N = %u, M = %u\n", N, M);
+	tc_write(DP0_VIDMNGEN0, M);
 	tc_write(DP0_VIDMNGEN1, N);
+	tc_write(DP0_VMNGENSTATUS, M);
 
 	return 0;
 err:
