@@ -942,8 +942,11 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 #endif
 		0);
 #endif
-	/* save clock, get this vaule directly from DI */
-	tc->pxl_clk = PICOS2KHZ(mode->pixclock) * 1000UL;
+	/*
+	 * Save clock
+	 * TODO: get this vaule directly from DI
+	 */
+	tc->pxl_clk = 132000000; //PICOS2KHZ(mode->pixclock) * 1000UL;
 
 	return 0;
 err:
@@ -1324,6 +1327,14 @@ static int tc_get_videomodes(struct tc_data *tc, struct display_timings *timings
 #else
 	if (tc->edid) {
 		ret = edid_to_display_timings(timings, tc->edid);
+		/* Clock hack */
+		if (1) {
+			struct fb_videomode *mode;
+
+			mode = timings->modes;
+			mode->pixclock = KHZ2PICOS(132000);
+			mode->vsync_len += 5;
+		}
 	} else {
 		struct fb_videomode *mode;
 
