@@ -223,14 +223,14 @@ static int tc_aux_i2c_get_status(struct tc_data *tc)
 			/* Nack */
 			return -EIO;
 		case 0x80:
-			printf("Defer! 0x%08x\n", value);
+			dev_err(tc->dev, "i2c defer\n");
 			return -EAGAIN;
 		}
 		return 0;
 	}
 
 	if (value & 0x02) {
-		printf("Timeout!\n");
+		dev_err(tc->dev, "i2c access timeout!\n");
 		return -ETIME;
 	}
 	return -EBUSY;
@@ -509,7 +509,7 @@ static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk)
 
 	pixelclock = tc->pll_clk;
 
-	printf("requested %d pixeclock, ref %d\n", pixelclock, refclk);
+	dev_info(tc->dev, "PLL: requested %d pixeclock, ref %d\n", pixelclock, refclk);
 	best_delta = pixelclock;
 	/* big loops */
 	for (i_pre = 0; i_pre < ARRAY_SIZE(e_pre_div); i_pre++) {
@@ -553,8 +553,8 @@ static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk)
 		return -EINVAL;
 	}
 	
-	printf("got %d, delta %d\n", best_pixelclock, best_delta);
-	printf(" %d / %d / %d * %d / %d\n",
+	dev_info(tc->dev, "PLL: got %d, delta %d\n", best_pixelclock, best_delta);
+	dev_info(tc->dev, "PLL: %d / %d / %d * %d / %d\n",
 		refclk, e_pre_div[best_pre], best_div,
 		best_mul, e_post_div[best_post]);
 
@@ -665,7 +665,7 @@ static int tc_stream_clock_calc(struct tc_data *tc, u32 clk)
 	g = ls / N;
 	M = clk / g;
 #endif
-	printf("!!! N = %u, M = %u\n", N, M);
+	dev_info(tc->dev, "MNgen: N = %u, M = %u\n", N, M);
 	tc_write(DP0_VIDMNGEN0, M);
 	tc_write(DP0_VIDMNGEN1, N);
 	tc_write(DP0_VMNGENSTATUS, M);
@@ -795,14 +795,14 @@ static int tc_get_display_props(struct tc_data *tc)
 		goto err_dpcd_read;
 	tc->link.assr = tmp[0] & 0x01;
 
-	printf("DPCD rev: %d.%d, rate: %s, lanes: %d, framing: %s\n",
+	dev_notice(tc->dev, "DPCD rev: %d.%d, rate: %s, lanes: %d, framing: %s\n",
 		tc->link.rev >> 4,
 		tc->link.rev & 0x0f,
 		(tc->link.rate == 0x06) ? "1.62Gbps" : "2.7Gbps",
 		tc->link.lanes,
 		tc->link.enhanced ? "enhanced" : "non-enhanced");
-	printf("ANSI 8B/10B: %d\n", tc->link.coding8b10b);
-	printf("Display ASSR: %d, TC358767 ASSR: %d\n",
+	dev_notice(tc->dev, "ANSI 8B/10B: %d\n", tc->link.coding8b10b);
+	dev_notice(tc->dev, "Display ASSR: %d, TC358767 ASSR: %d\n",
 		tc->link.assr, tc->assr);
 
 	return 0;
@@ -822,17 +822,17 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 	int vtotal;
 	int vid_sync_dly;
 
-	printf("set mode %dx%d\n", mode->xres, mode->yres);
-	printf("H margin %d,%d sync %d\n",
-		mode->left_margin, mode->right_margin, mode->hsync_len);
-	printf("V margin %d,%d sync %d\n",
-		mode->upper_margin, mode->lower_margin, mode->vsync_len);
-
 	htotal = mode->hsync_len + mode->left_margin + mode->xres +
 		mode->right_margin;
 	vtotal = mode->vsync_len + mode->upper_margin + mode->yres +
 		mode->lower_margin;
-	printf("total: %dx%d\n", htotal, vtotal);
+
+	dev_info(tc->dev, "set mode %dx%d\n", mode->xres, mode->yres);
+	dev_info(tc->dev, "H margin %d,%d sync %d\n",
+		mode->left_margin, mode->right_margin, mode->hsync_len);
+	dev_info(tc->dev, "V margin %d,%d sync %d\n",
+		mode->upper_margin, mode->lower_margin, mode->vsync_len);
+	dev_info(tc->dev, "total: %dx%d\n", htotal, vtotal);
 
 
 	/* LCD Ctl Frame Size */
@@ -1015,7 +1015,7 @@ static int tc_main_link_setup(struct tc_data *tc)
 	 * check is tc configured for same mode
 	 */
 	if (tc->assr != tc->link.assr) {
-		printf("Trying to set display to ASSR: %d\n",
+		dev_info(tc->dev, "Trying to set display to ASSR: %d\n",
 			tc->assr);
 		/* try to set ASSR on display side */
 		tmp[0] = tc->assr;
@@ -1091,7 +1091,7 @@ static int tc_main_link_setup(struct tc_data *tc)
 		if (timeout == 0) {
 			dev_err(tc->dev, "training timeout!\n");
 		} else {
-			printf("Link training phase %d done after %d uS: %s\n",
+			dev_info(tc->dev, "Link training phase %d done after %d uS: %s\n",
 				(value >> 11) & 0x03, 1000 - timeout,
 				training_1_errors[(value >> 8) & 0x07]);
 			if (((value >> 8) & 0x07) == 0)
@@ -1130,7 +1130,7 @@ static int tc_main_link_setup(struct tc_data *tc)
 		if (timeout == 0) {
 			dev_err(tc->dev, "training timeout!\n");
 		} else {
-			printf("Link training phase %d done after %d uS: %s\n",
+			dev_info(tc->dev, "Link training phase %d done after %d uS: %s\n",
 				(value >> 11) & 0x03, 1000 - timeout,
 				training_2_errors[(value >> 8) & 0x07]);
 			/* in case of two lanes */
@@ -1175,12 +1175,12 @@ static int tc_main_link_setup(struct tc_data *tc)
 		 ((tmp[5] & 0x01) != 0x01)*/));
 
 	if (timeout == 0) {
-		printf("0x0200 SINK_COUNT: 0x%02x\n", tmp[0]);
-		printf("0x0201 DEVICE_SERVICE_IRQ_VECTOR: 0x%02x\n", tmp[1]);
-		printf("0x0202 LANE0_1_STATUS: 0x%02x\n", tmp[2]);
-		printf("0x0204 LANE_ALIGN__STATUS_UPDATED: 0x%02x\n", tmp[4]);
-		printf("0x0205 SINK_STATUS: 0x%02x\n", tmp[5]);
-		printf("0x0206 ADJUST_REQUEST_LANE0_1: 0x%02x\n", tmp[6]);
+		dev_info(tc->dev, "0x0200 SINK_COUNT: 0x%02x\n", tmp[0]);
+		dev_info(tc->dev, "0x0201 DEVICE_SERVICE_IRQ_VECTOR: 0x%02x\n", tmp[1]);
+		dev_info(tc->dev, "0x0202 LANE0_1_STATUS: 0x%02x\n", tmp[2]);
+		dev_info(tc->dev, "0x0204 LANE_ALIGN__STATUS_UPDATED: 0x%02x\n", tmp[4]);
+		dev_info(tc->dev, "0x0205 SINK_STATUS: 0x%02x\n", tmp[5]);
+		dev_info(tc->dev, "0x0206 ADJUST_REQUEST_LANE0_1: 0x%02x\n", tmp[6]);
 
 		if (tmp[2] != 0x77)
 			dev_err(tc->dev, "Lane0/1 not ready\n");
@@ -1224,7 +1224,7 @@ static int tc_main_link_stream(struct tc_data *tc, int state)
 	int ret;
 	u32 value;
 
-	printf("stream: %d\n", state);
+	dev_info(tc->dev, "stream: %d\n", state);
 
 	if (state) {
 		value = 
@@ -1663,8 +1663,6 @@ static int tc_probe(struct device_d *dev)
 	enum of_gpio_flags flags;
 	int ret;
 
-	printf("TC358767 probe\n");
-
 	tc = xzalloc(sizeof(struct tc_data));
 	if (!tc)
 		return -ENOMEM;
@@ -1741,8 +1739,6 @@ static int tc_probe(struct device_d *dev)
 	/* ignore it for now */
 	if (ret)
 		dev_err(tc->dev, "EDID read error\n");
-
-	printf("TC358767 probed\n");
 
 	global_tc = tc;
 
