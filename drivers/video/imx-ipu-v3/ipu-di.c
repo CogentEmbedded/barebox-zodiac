@@ -565,7 +565,7 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 		round = sig->pixelclock;
 	}
 
-	ret = clk_set_rate(&di->clk_di_pixel, round / 2);
+	ret = clk_set_rate(&di->clk_di_pixel, round);
 	printf("clock rate %lu\n", clk_get_rate(&di->clk_di_pixel));
 
 	h_total = sig->width + sig->h_sync_width + sig->h_start_width +
