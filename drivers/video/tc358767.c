@@ -40,7 +40,6 @@
 /* debug */
 #include <command.h>
 
-//#define TEST_BAR		999
 #define AUTO_MN			999
 
 /* registers */
@@ -98,6 +97,7 @@
 
 #define DP_PHY_CTRL		0x0800
 #define DP0_PLLCTRL		0x0900
+#define DP1_PLLCTRL		0x0904	/* not defined in DS */
 #define PXL_PLLCTRL		0x0908
 #define PXL_PLLPARAM		0x0914
 #define SYS_PLLPARAM		0x0918
@@ -132,8 +132,16 @@ struct tc_data {
 	/* link settings */
 	struct edp_link		link;
 
+	/* mode */
+	struct fb_videomode	*mode;
+
 	/* real pixeclock */
 	u32			pxl_clk;
+	/* PLL pixelclock */
+	u32			pll_clk;
+	u32			pll_clk_real;
+
+	int			test_pattern;
 
 	u32			rev;
 	u8			assr;
@@ -486,7 +494,7 @@ static u32 tc_srcctrl(struct tc_data *tc)
 	return reg;
 }
 
-static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk, int pixelclock)
+static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk)
 {
 	int ret;
 	//int pixelclock;
@@ -499,6 +507,9 @@ static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk, int pixelclock)
 	int e_post_div[] = {1, 2, 3, 5, 7};
 	int best_pixelclock = 0;
 	int vco_hi = 0;
+	int pixelclock;
+
+	pixelclock = tc->pll_clk;
 
 	printf("requested %d pixeclock, ref %d\n", pixelclock, refclk);
 	best_delta = pixelclock;
@@ -592,7 +603,8 @@ static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk, int pixelclock)
 	mdelay(100);
 
 	/* save */
-	tc->pxl_clk = best_pixelclock;
+	tc->pll_clk = pixelclock;
+	tc->pll_clk_real = best_pixelclock;
 
 	return 0;
 err:
@@ -614,7 +626,7 @@ err:
 }
 
 #define CLOCK_ROUND	10000
-static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
+static int tc_stream_clock_calc(struct tc_data *tc, u32 clk)
 {
 	int ret;
 	u32 g;
@@ -633,23 +645,17 @@ static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
 	 * M/N = f_STRMCLK / f_LSCLK
 	 *
 	 */
+
 	if (tc->link.rate == 0x0a)
 		ls = 270000000u; /* 270 MHz */
 	else
 		ls = 162000000u; /* 162 MHz */
-	/* round up - should not matter */
-	//streamclk = (streamclk / CLOCK_ROUND) * CLOCK_ROUND;
-	g = gcd(streamclk, ls);
-	N = ls / g;
-	M = streamclk / g;
 #if 0
-	/* in case N too low */
-	if (N < 1000) {
-		/* round up to 10 KHz - should not matter */
-		streamclk = streamclk / 10000 * 10000;
-		N = gcd(streamclk, ls);
-	}
-#endif
+	/* sync mode */
+	g = gcd(clk, ls);
+	N = ls / g;
+	M = clk / g;
+#if 0
 	/* from exel file */
 	if (N < 10) {
 		M *= 20; N *= 20;
@@ -660,6 +666,18 @@ static int tc_stream_clock_calc(struct tc_data *tc, int streamclk)
 	} else if (N < 100) {
 		M *= 2;  N *= 2;
 	}
+#else
+	while (N < 5000) {
+		M *= 3;
+		N *= 3;
+	};
+#endif
+#else
+	/* async mode */
+	N = 32768;
+	g = ls / N;
+	M = clk / g;
+#endif
 	printf("!!! N = %u, M = %u\n", N, M);
 	tc_write(DP0_VIDMNGEN0, M);
 	tc_write(DP0_VIDMNGEN1, N);
@@ -679,7 +697,7 @@ static int tc_test_pattern(struct tc_data *tc, unsigned int type)
 		return -EINVAL;
 
 	if (type) {
-		ret = tc_pxl_pll_en(tc, 19200000, tc->pxl_clk);
+		ret = tc_pxl_pll_en(tc, 19200000);
 	} else {
 		ret = tc_pxl_pll_dis(tc);
 	}
@@ -732,7 +750,11 @@ static int tc_aux_link_setup(struct tc_data *tc)
 		0);
 	/* wait PLL lock */
 	mdelay(100);
-	tc_write(0x0904, 0x00000005);	//???
+	tc_write(DP1_PLLCTRL, //0x00000005);	//???
+		(1 << 2) |	/* Force PLL parameter update register */
+		(0 << 1) |	/* PLL bypass disabled */
+		(1 << 0) |	/* Enable PLL */
+		0);
 	mdelay(100);
 
 	timeout = 1000;
@@ -759,21 +781,11 @@ err:
 	return ret;
 }
 
-static int tc_main_link_setup(struct tc_data *tc)
+static int tc_get_display_props(struct tc_data *tc)
 {
 	int ret;
-	u32 value;
-	u32 ltchgreq;
 	/* temp buffer */
 	u8 tmp[16];
-	int timeout;
-	int retry;
-
-	/* ----Set misc---- */
-	/* 8 bits per color */
-	tc_read(DP0_MISC, &value);
-	value = value | (1 << 5);
-	tc_write(DP0_MISC, value);
 
 	/* ----Read DP Rx Link Capability-------- */
 	ret = tc_aux_read(tc, 0x000000, tmp, 8);
@@ -789,7 +801,6 @@ static int tc_main_link_setup(struct tc_data *tc)
 	tc->link.lanes = tmp[2] & 0x0f;
 	tc->link.enhanced = !!(tmp[2] & 0x80);
 	tc->link.spread = tmp[3] & 0x01;
-	tc->link.spread = 0;
 	tc->link.coding8b10b = tmp[6] & 0x01;
 	tc->link.scrambler_dis = 0;
 	/* read assr */
@@ -807,6 +818,234 @@ static int tc_main_link_setup(struct tc_data *tc)
 	printf("ANSI 8B/10B: %d\n", tc->link.coding8b10b);
 	printf("Display ASSR: %d, TC358767 ASSR: %d\n",
 		tc->link.assr, tc->assr);
+
+	return 0;
+
+err_dpcd_read:
+	dev_err(tc->dev, "failed to read DPCD: %d\n", ret);
+	return ret;
+err_dpcd_inval:
+	dev_err(tc->dev, "invalid DPCD\n");
+	return -EINVAL;
+}
+
+static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
+{
+	int ret;
+	int htotal;
+	int vtotal;
+	int vid_sync_dly;
+
+	printf("set mode %dx%d\n", mode->xres, mode->yres);
+	printf("H margin %d,%d sync %d\n",
+		mode->left_margin, mode->right_margin, mode->hsync_len);
+	printf("V margin %d,%d sync %d\n",
+		mode->upper_margin, mode->lower_margin, mode->vsync_len);
+
+	htotal = mode->hsync_len + mode->left_margin + mode->xres +
+		mode->right_margin;
+	vtotal = mode->vsync_len + mode->upper_margin + mode->yres +
+		mode->lower_margin;
+	printf("total: %dx%d\n", htotal, vtotal);
+
+
+	/* LCD Ctl Frame Size */
+	/* Austin: 04000100 */
+	tc_write(VPCTRL0,
+		(0x40 << 20)|	/* VSDELAY */
+		(1 << 8) |	/* RGB888 */
+		(0 << 4) |	/* timing gen is disabled */
+		(0 << 0) |	/* Magic Square is disabled */
+		0);
+	tc_write(HTIM01,
+		(mode->left_margin << 16) |	/* H back porch */
+		(mode->hsync_len << 0));	/* Hsync */
+	tc_write(HTIM02,
+		(mode->right_margin << 16) |	/* H front porch */
+		(mode->xres << 0));		/* width */
+	tc_write(VTIM01,
+		(mode->upper_margin << 16) |	/* V back porch */
+		(mode->vsync_len << 0));	/* Vsync */
+	tc_write(VTIM02,
+		(mode->lower_margin << 16) |	/* V front porch */
+		(mode->yres << 0));		/* height */
+	tc_write(VFUEN0, 0x00000001);		/* update settings */
+
+	/* Enable Color Bar */
+	//tc_write(TSTCTL, 0xffffff12);
+	/* Austin: */
+	tc_write(TSTCTL, //0x78146312);
+		(120 << 24) |	/* Red Color component value */
+		(20 << 16) |	/* Green Color component value */
+		(99 << 8) |	/* Blue Color component value */
+		(1 << 4) |	/* Enable I2C Filter */
+		(2 << 0) |	/* Color bar Mode */
+		0);
+
+	/* DP Main Stream Attirbutes */
+	//tc_write(DP0_VIDSYNCDELAY, (0x0f << 16) | 0x0f); /* defaults, check this */
+	/* Austin: */
+	//tc_write(DP0_VIDSYNCDELAY, (0x003e << 16) | 0x07f0);
+	//printf("Sync delay %d\n", mode->hsync_len + mode->left_margin + mode->xres);
+	//printf("Htotal = %d, not %d\n", htotal, 0x07f0);
+	vid_sync_dly = mode->hsync_len + mode->left_margin + mode->xres;
+	tc_write(DP0_VIDSYNCDELAY,
+		(0x003e << 16) | 	/* thresh_dly */
+		//(0x004e << 16) | 	/* thresh_dly */
+		(vid_sync_dly << 0)|	/* vid_sync_dly */
+		0);
+
+	tc_write(DP0_TOTALVAL, (vtotal << 16) | (htotal));
+
+	tc_write(DP0_STARTVAL,
+		((mode->upper_margin + mode->vsync_len) << 16) |
+		((mode->left_margin + mode->hsync_len) << 0));
+
+	tc_write(DP0_ACTIVEVAL, (mode->yres << 16) | (mode->xres));
+
+	tc_write(DP0_SYNCVAL,
+		//(1 << 31)|			/* Vsync active low */
+		(mode->vsync_len << 16)|	/* Vsync width */
+		//(1 << 15)|			/* Hsync active low */
+		(mode->hsync_len << 0)|		/* Hsync width */
+		0);
+#if 0
+	tc_read(DP0_MISC, &value);
+	value = value | (1 << 5);		/* 8 bit per component */
+	tc_write(DP0_MISC, value);
+#else
+	/* Austin 1F3F0020 */
+	tc_write(DP0_MISC,
+		(0x3e << 23)|			/* max_tu_symbol */
+		(0x3f << 16)|			/* tu_size */
+		(1 << 5) |			/* 8 bit per component */
+		//(0 << 5) |			/* 6 bit per component */
+		//(1 << 0) |			/* SyncClk */
+		0);
+#endif
+
+#if 1
+	/* POCTRL - not defined in DS */
+	/* assume 1 - mean Act low as in DP0_SYNCVAL */
+	tc_write(POCTRL, //0x00000080);
+		//(1 << 7) |	/* S2P??? - SINK_STATUS does not go 1 if set */
+#if 0
+		(0 << 3) |	/* PClk_P =? PCLK polarity? */
+		(1 << 2) |	/* VS_P =? VSync polarity? */
+		(1 << 1) |	/* HS_P =? HSync polarity? */
+		(0 << 0) |	/* DE_P =? DE polarity? */
+#else
+		(1 << 3) |	/* PClk_P =? PCLK polarity? */
+		(0 << 2) |	/* VS_P =? VSync polarity? */
+		(0 << 1) |	/* HS_P =? HSync polarity? */
+		(1 << 0) |	/* DE_P =? DE polarity? */
+#endif
+		0);
+#endif
+	/* save clock, get this vaule directly from DI */
+	tc->pxl_clk = PICOS2KHZ(mode->pixclock) * 1000UL;
+
+	return 0;
+err:
+	return ret;
+}
+
+static int tc_main_link_setup(struct tc_data *tc)
+{
+	int ret;
+	u32 value;
+	u32 ltchgreq;
+	/* temp buffer */
+	u8 tmp[16];
+	int timeout;
+	int retry;
+
+	/* display mode should be set at this point */
+	if (!tc->mode)
+		return -EINVAL;
+
+	/* from exel file - DP0_SrcCtrl */
+	tc_write(0x06A0, 0x00003087);
+	/* from exel file - DP1_SrcCtrl */
+	tc_write(0x07a0, 0x00003083);
+	tc_write(SYS_PLLPARAM, //0x00000101);
+		(1 << 8) |	/* RefClk frequency is 19.2 MHz */
+		(0 << 4) |	/* Use LSCLK based source */
+		(1 << 0) |	/* LSCLK divider for SYSCLK = 2 */
+		0);
+	/* ----Setup Main Link-------- */
+	tc_write(DP_PHY_CTRL, //0x03000007);	should be 0x03000017
+		(1 << 25)|	/* AUX PHY BGR Enable */
+		(1 << 24)|	/* PHY Power Switch Enable */
+		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
+		(1 << 2) |	/* Reserved */
+		(1 << 1) |	/* PHY Aux Channel0 Enable */
+		(1 << 0) |	/* PHY Main Channel0 Enable */
+		0);
+	mdelay(100);
+
+	/* PLL setup */
+	tc_write(DP0_PLLCTRL, //0x00000005);
+		(1 << 2) |	/* Force PLL parameter update register */
+		(0 << 1) |	/* PLL bypass disabled */
+		(1 << 0) |	/* Enable PLL */
+		0);
+	/* wait PLL lock */
+	mdelay(100);
+	tc_write(DP1_PLLCTRL, //0x00000005);	//???
+		(1 << 2) |	/* Force PLL parameter update register */
+		(0 << 1) |	/* PLL bypass disabled */
+		(1 << 0) |	/* Enable PLL */
+		0);
+	/* wait PLL lock */
+	mdelay(100);
+	/* PXL PLL setup */
+	if (tc->test_pattern) {
+		ret = tc_pxl_pll_en(tc, 19200000);
+		if (ret)
+			goto err;
+	}
+
+	/* ----Reset/Enable Main Links-------- */
+	tc_write(DP_PHY_CTRL, //0x13001107);	should be 0x13001117
+		(1 << 28)|	/* DP PHY Global Soft Reset */
+		(1 << 25)|	/* AUX PHY BGR Enable */
+		(1 << 24)|	/* PHY Power Switch Enable */
+		(1 << 12)|	/* Reset DP PHY1 Main Channel */
+		(1 << 8) |	/* Reset DP PHY0 Main Channel */
+		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
+		(1 << 2) |	/* Reserved */
+		(1 << 1) |	/* PHY Aux Channel0 Enable */
+		(1 << 0) |	/* PHY Main Channel0 Enable */
+		0);
+	udelay(100);
+	tc_write(DP_PHY_CTRL, //0x03000007);	should be 0x03000017
+		(1 << 25)|	/* AUX PHY BGR Enable */
+		(1 << 24)|	/* PHY Power Switch Enable */
+		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
+		(1 << 2) |	/* Reserved */
+		(1 << 1) |	/* PHY Aux Channel0 Enable */
+		(1 << 0) |	/* PHY Main Channel0 Enable */
+		0);
+
+	timeout = 1000;
+	do {
+		tc_read(DP_PHY_CTRL, &value);
+		udelay(1);
+	} while ((!(value & (1 << 16))) && (--timeout));
+
+	if (timeout == 0) {
+		dev_err(tc->dev, "timeout waiting for phy become ready");
+		return -ETIMEDOUT;
+	}
+	printf("Reg DP_PHY_CTRL 0x%08x (should be 0x%08x)\n",
+		value, 0x03010007);
+
+	/* ----Set misc---- */
+	/* 8 bits per color */
+	tc_read(DP0_MISC, &value);
+	value = value | (1 << 5);
+	tc_write(DP0_MISC, value);
 
 	/*
 	 * ASSR mode
@@ -837,45 +1076,6 @@ static int tc_main_link_setup(struct tc_data *tc)
 		}
 	}
 
-	/* ----Setup Main Link-------- */
-#if 1
-	/* ----Reset/Enable Main Links-------- */
-	tc_write(DP_PHY_CTRL, //0x13001107);	should be 0x13001117
-		(1 << 28)|	/* DP PHY Global Soft Reset */
-		(1 << 25)|	/* AUX PHY BGR Enable */
-		(1 << 24)|	/* PHY Power Switch Enable */
-		(1 << 12)|	/* Reset DP PHY1 Main Channel */
-		(1 << 8) |	/* Reset DP PHY0 Main Channel */
-		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
-		(1 << 2) |	/* Reserved */
-		(1 << 1) |	/* PHY Aux Channel0 Enable */
-		(1 << 0) |	/* PHY Main Channel0 Enable */
-		0);
-	udelay(100);
-#endif
-	tc_write(DP_PHY_CTRL, //0x03000007);	should be 0x03000017
-		(1 << 25)|	/* AUX PHY BGR Enable */
-		(1 << 24)|	/* PHY Power Switch Enable */
-		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
-		(1 << 2) |	/* Reserved */
-		(1 << 1) |	/* PHY Aux Channel0 Enable */
-		(1 << 0) |	/* PHY Main Channel0 Enable */
-		0);
-	mdelay(100);
-
-	timeout = 1000;
-	do {
-		tc_read(DP_PHY_CTRL, &value);
-		udelay(1);
-	} while ((!(value & (1 << 16))) && (--timeout));
-
-	if (timeout == 0) {
-		dev_err(tc->dev, "timeout waiting for phy become ready");
-		return -ETIMEDOUT;
-	}
-	printf("Reg DP_PHY_CTRL 0x%08x (should be 0x%08x)\n",
-		value, 0x03010007);
-
 	/* ----Setup Link & DPRx Config for Training-------- */
 	/* LINK_BW_SET */
 	tmp[0] = tc->link.rate;
@@ -887,11 +1087,12 @@ static int tc_main_link_setup(struct tc_data *tc)
 	if (ret)
 		goto err_dpcd_write;
 
-	/* MAIN_LINK_CHANNEL_CODING_SET */
+	/* DOWNSPREAD_CTRL */
 	if (tc->link.spread)
-		tmp[0] = 0x40;	/* down-spreading enable */
+		tmp[0] = 0x10;	/* down-spreading enable */
 	else
 		tmp[0] = 0x00;
+	/* MAIN_LINK_CHANNEL_CODING_SET */
 	if (tc->link.coding8b10b)
 		tmp[1] = 0x01;	/* 8B10B */
 	else
@@ -908,8 +1109,6 @@ static int tc_main_link_setup(struct tc_data *tc)
 		(0x0d << 0)|	/* Loop Timer Delay ??? */
 		0);
 
-	/* from exel file - DP1_SrcCtrl */
-	tc_write(0x07a0, 0x0003083);
 	retry = 5;
 	do {
 		/* ----Set DP0 Trainin Pattern 1-------- */
@@ -1004,7 +1203,7 @@ static int tc_main_link_setup(struct tc_data *tc)
 		0);
 
 	/* wait */
-	timeout = 1000;
+	timeout = 100;
 	do {
 		udelay(1);
 		/* ----Read DPCD 0x00200-0x00206-------- */
@@ -1036,6 +1235,20 @@ static int tc_main_link_setup(struct tc_data *tc)
 		return -EAGAIN;
 	}
 
+	/* set video mode */
+	ret = tc_set_video_mode(tc, tc->mode);
+	if (ret)
+		goto err;
+
+	/* set M/N */
+	if (tc->test_pattern) {
+		ret = tc_stream_clock_calc(tc, tc->pll_clk_real);
+	} else {
+		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
+	}
+	if (ret)
+		goto err;
+
 #if 0
 	/* disable power down mode */
 	tmp[0] = 0x01;
@@ -1052,9 +1265,6 @@ err_dpcd_read:
 err_dpcd_write:
 	dev_err(tc->dev, "failed to write DPCD: %d\n", ret);
 	return ret;
-err_dpcd_inval:
-	dev_err(tc->dev, "invalid DPCD\n");
-	return -EINVAL;
 }
 
 
@@ -1067,26 +1277,29 @@ static int tc_main_link_stream(struct tc_data *tc, int state)
 
 	if (state) {
 		value = 
+#ifdef AUTO_MN
 			(1 << 6) |	/* enable the auto-generation of M/N values for video */
+#endif
 			(1 << 0) |	/* DPTX function enable */
 			0;
-		
+
 		if (tc->link.enhanced)
 			value |= (1 << 5);	/* Enhanced Framing Enable */
 		tc_write(DP0CTL, value);
-		udelay(10);
+		/*
+		 * Note that vid_en_i or vid_en_i assertion should be delayed by atleast
+		 * vid_n_i x LSCLK cycles from the time vid_mn_gen_i is asserted in
+		 * order to generate stable values for vid_m_i.
+		 */
+		mdelay(100);
 		value |= (1 << 1);		/* Video transmission enable */
 		tc_write(DP0CTL, value);
-			/* Set input interface */
-		tc_write(SYSCTRL,
-#ifdef TEST_BAR
-//			(3 << 4) |	/* Color test bar */
-			(3 << 0) |	/* Color test bar */
-#else
-//			(2 << 4) |	/* DPI input for DP1 */
-			(2 << 0) |	/* DPI input for DP0 */
-#endif
-			0);
+		/* Set input interface */
+		if (tc->test_pattern)
+			value = (3 << 4) | (3 << 0);
+		else
+			value = (2 << 4) | (2 << 0);
+		tc_write(SYSCTRL, value);
 	} else {
 		tc_write(DP0CTL, 0x00000000);
 	}
@@ -1156,6 +1369,8 @@ static int tc_debug_dump(struct tc_data *tc)
 		char	*name;
 	} regs_dpcd[] = {
 		{0x006, 1, "MAIN_LINK_CHANNEL_CODING"},
+		{0x100, 1, "LINK_BW_SET"},
+		{0x101, 1, "LANE_COUNT_SET"},
 		{0x102, 1, "TRAINING_PATTERN_SET"},
 		{0x103, 1, "TRAINING_LANE0_SET"},
 		{0x107, 1, "DOWNSPREAD_CTRL"},
@@ -1200,9 +1415,11 @@ static int tc_debug_dump(struct tc_data *tc)
 		char	*name;
 	} regs_tc[] ={
 		{DP0CTL, "DP0CTL"},
+		{DP0_SRCCTRL, "DP0_SRCCTRL"},
 		{SYSSTAT, "SYSSTAT"},
 		{SYSCTRL, "SYSCTRL"},
 		{DPIPXLFMT, "DPIPXLFMT"},
+		{DP0_VIDMNGEN0, "DP0_VIDMNGEN0"},
 		{DP0_VIDMNGEN1, "DP0_VIDMNGEN1"},
 		{DP0_VMNGENSTATUS, "DP0_VMNGENSTATUS"},
 		{DP0_SNKLTCHGREQ, "DP0_SNKLTCHGREQ"},
@@ -1260,128 +1477,28 @@ static int tc_debug_dump(struct tc_data *tc)
 				(tmp[1] << 8) | tmp[0] );
 			
 	}
-	return 0;
-err:
-	return ret;
-}
 
-static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
-{
-	int ret;
-	int htotal;
-	int vtotal;
-	int vid_sync_dly;
+	if (1) {
+		u32 rate;
+		u32 M;
+		u32 N;
+		u64 freq;
 
-	printf("set mode %dx%d\n", mode->xres, mode->yres);
-	printf("H margin %d,%d sync %d\n",
-		mode->left_margin, mode->right_margin, mode->hsync_len);
-	printf("V margin %d,%d sync %d\n",
-		mode->upper_margin, mode->lower_margin, mode->vsync_len);
+		printf("Recover freq:\n");
+		tc_read(DP0_VIDMNGEN1, &N);
+		tc_read(DP0_VMNGENSTATUS, &M);
 
-	htotal = mode->hsync_len + mode->left_margin + mode->xres +
-		mode->right_margin;
-	vtotal = mode->vsync_len + mode->upper_margin + mode->yres +
-		mode->lower_margin;
-	printf("total: %dx%d\n", htotal, vtotal);
+		if (tc->link.rate != 0x06)
+			rate = 270;
+		else
+			rate = 162;
 
-
-	/* LCD Ctl Frame Size */
-	/* Austin: 04000100 */
-	tc_write(VPCTRL0,
-		(0x40 << 20)|	/* VSDELAY */
-		(1 << 8) |	/* RGB888 */
-		(0 << 4) |	/* timing gen is disabled */
-		(0 << 0) |	/* Magic Square is disabled */
-		0);
-	tc_write(HTIM01,
-		(mode->left_margin << 16) |	/* H back porch */
-		(mode->hsync_len << 0));	/* Hsync */
-	tc_write(HTIM02,
-		(mode->right_margin << 16) |	/* H front porch */
-		(mode->xres << 0));		/* width */
-	tc_write(VTIM01,
-		(mode->upper_margin << 16) |	/* V back porch */
-		(mode->vsync_len << 0));	/* Vsync */
-	tc_write(VTIM02,
-		(mode->lower_margin << 16) |	/* V front porch */
-		(mode->yres << 0));		/* height */
-	tc_write(VFUEN0, 0x00000001);		/* update settings */
-
-	/* Enable Color Bar */
-	//tc_write(TSTCTL, 0xffffff12);
-	/* Austin: */
-	tc_write(TSTCTL, //0x78146312); 
-		(120 << 24) |	/* Red Color component value */
-		(20 << 16) |	/* Green Color component value */
-		(99 << 8) |	/* Blue Color component value */
-		(1 << 4) |	/* Enable I2C Filter */
-		(2 << 0) |	/* Color bar Mode */
-		0);
-
-	/* DP Main Stream Attirbutes */
-	//tc_write(DP0_VIDSYNCDELAY, (0x0f << 16) | 0x0f); /* defaults, check this */
-	/* Austin: */
-	//tc_write(DP0_VIDSYNCDELAY, (0x003e << 16) | 0x07f0);
-	//printf("Sync delay %d\n", mode->hsync_len + mode->left_margin + mode->xres);
-	//printf("Htotal = %d, not %d\n", htotal, 0x07f0);
-	vid_sync_dly = mode->hsync_len + mode->left_margin + mode->xres;
-	tc_write(DP0_VIDSYNCDELAY, 
-		//(0x003e << 16) | 	/* thresh_dly */
-		(0x004e << 16) | 	/* thresh_dly */
-		(vid_sync_dly << 0)|	/* vid_sync_dly */
-		0);
-	//tc_write(DP0_VIDMNGEN0, 0x0); /* audio sync stuff */
-
-	tc_write(DP0_TOTALVAL, (vtotal << 16) | (htotal));
-
-	tc_write(DP0_STARTVAL,
-		((mode->upper_margin + mode->vsync_len) << 16) |
-		((mode->left_margin + mode->hsync_len) << 0));
-	
-	tc_write(DP0_ACTIVEVAL, (mode->yres << 16) | (mode->xres));
-
-	tc_write(DP0_SYNCVAL,
-		//(1 << 31)|			/* Vsync active low */
-		(mode->vsync_len << 16)|	/* Vsync width */
-		//(1 << 15)|			/* Hsync active low */
-		(mode->hsync_len << 0)|		/* Hsync width */
-		0);
-#if 0
-	tc_read(DP0_MISC, &value);
-	value = value | (1 << 5);		/* 8 bit per component */
-	tc_write(DP0_MISC, value);
-#else
-	/* Austin 1F3F0020 */
-	tc_write(DP0_MISC,
-		(0x3e << 23)|			/* max_tu_symbol */
-		(0x3f << 16)|			/* tu_size */
-		(1 << 5) |			/* 8 bit per component */
-		//(0 << 5) |			/* 6 bit per component */
-		//(1 << 0) |			/* SyncClk */
-		0);
-#endif
-
-#if 1
-	/* POCTRL - not defined in DS */
-	/* assume 1 - mean Act low as in DP0_SYNCVAL */
-	tc_write(POCTRL, //0x00000080);
-		//(1 << 7) |	/* S2P??? - SINK_STATUS does not go 1 if set */
-#if 0
-		(0 << 3) |	/* PClk_P =? PCLK polarity? */
-		(1 << 2) |	/* VS_P =? VSync polarity? */
-		(1 << 1) |	/* HS_P =? HSync polarity? */
-		(0 << 0) |	/* DE_P =? DE polarity? */
-#else
-		(1 << 3) |	/* PClk_P =? PCLK polarity? */
-		(0 << 2) |	/* VS_P =? VSync polarity? */
-		(0 << 1) |	/* HS_P =? HSync polarity? */
-		(1 << 0) |	/* DE_P =? DE polarity? */
-#endif
-		0);
-#endif
-	/* save clock, get this vaule directly from DI */
-	tc->pxl_clk = PICOS2KHZ(mode->pixclock) * 1000UL / 2;
-
+		freq = (u64)rate * (u64)M * 1000000;
+		do_div(freq, N);
+		printf("%dM * %d / %d = %u\n",
+			rate, M, N, (u32)freq);
+		printf("Should be %u\n", tc->pxl_clk);
+	}
 	return 0;
 err:
 	return ret;
@@ -1431,6 +1548,7 @@ static int tc_read_edid(struct tc_data *tc)
 		start = i;
 	} while(i < EDID_LENGTH);
 
+#if 0
 	printf("eDP display EDID:\n");
 	for (i = 0; i < EDID_LENGTH; i++) {
 		if ((i) && ((i % 16) == 0))
@@ -1438,6 +1556,7 @@ static int tc_read_edid(struct tc_data *tc)
 		printf("%02x ", tc->edid[i]);
 	}
 	printf("\n");
+#endif
 
 	return 0;
 err:
@@ -1454,16 +1573,12 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 			struct tc_data, vpl);
 	/* hack */
 	struct ipu_di_mode *ipu_mode;
-	struct fb_videomode *mode;
 	int ret = 0;
 
 	switch (cmd) {
 	case VPL_PREPARE:
 		dev_dbg(tc->dev, "VPL_PREPARE\n");
-		mode = ptr;
-		ret = tc_set_video_mode(tc, mode);
-		if (ret < 0)
-			break;
+		tc->mode = ptr;
 
 		goto forward;
 	case VPL_ENABLE:
@@ -1471,37 +1586,10 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 		ret = tc_main_link_setup(tc);
 		if (ret < 0)
 			break;
-		/* only for DSI interface or test pattern generator */
-		if (1) {
-			ret = tc_pxl_pll_en(tc, 19200000, tc->pxl_clk);
-			if (ret)
-				break;
-		}
-		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
-		if (ret < 0)
-			break;
+
 		ret = tc_main_link_stream(tc, 1);
 		if (ret < 0)
 			break;
-		mdelay(100);
-		printf("pxl_clk %d\n", tc->pxl_clk);
-/*
-		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
-		if (ret < 0)
-			break;
-*/
-/*
-		ret = tc_main_link_setup(tc);
-		if (ret < 0)
-			break;
-		ret = tc_main_link_stream(tc, 1);
-		if (ret < 0)
-			break;
-
-		udelay(100);
-*/
-		//tc_debug_dump(tc);
-
 		goto forward;
 	case VPL_DISABLE:
 		dev_dbg(tc->dev, "VPL_DISABLE\n");
@@ -1594,37 +1682,50 @@ static int do_edp_debug(int argc, char *argv[])
 		ret = tc_aux_write(tc, reg, &value, 1);
 		if (ret)
 			goto err;
+		return 0;
 	}
 
 	/* PXL_PLL used for DSI interface and test pattern generator */
-	if ((argc == 3) && (!strcmp(argv[1], "c"))) {
-		int clock;
+	if ((argc == 3) && (!strcmp(argv[1], "p"))) {
+		tc->pll_clk = simple_strtol(argv[2], NULL, 0);
+		
+		/* stream off */
+		//tc_main_link_stream(tc, 0);
+		ret = tc_pxl_pll_en(tc, 19200000);
+		if (ret)
+			goto err;
+		/* stream on */
+		//tc_main_link_stream(tc, 1);
+		return 0;
+	}
 
-		clock = simple_strtol(argv[2], NULL, 0);
-		/* hack */
-		tc->pxl_clk = clock;
-		ret = tc_pxl_pll_en(tc, 19200000, clock);
+	/* M/N values */
+	if ((argc == 3) && (!strcmp(argv[1], "c"))) {
+		u32 clk;
+
+		clk = simple_strtol(argv[2], NULL, 0);
+		/* stream off */
+		//tc_main_link_stream(tc, 0);
+		ret = tc_stream_clock_calc(tc, clk);
 		if (ret)
 			goto err;
-		/* stream off */
-		tc_main_link_stream(tc, 0);
-		ret = tc_stream_clock_calc(tc, clock);
-		if (ret)
-			goto err;
-		/* stream off */
-		tc_main_link_stream(tc, 1);
+		/* stream on */
+		//tc_main_link_stream(tc, 1);
+		return 0;
 	}
 
 	if ((argc == 3) && (!strcmp(argv[1], "t"))) {
 		int type;
 
 		type = simple_strtol(argv[2], NULL, 0);
+		tc->test_pattern = type;
 		ret = tc_test_pattern(tc, type);
 		if (ret)
 			goto err;
+		return 0;
 	}
 
-	return 0;
+	return COMMAND_ERROR_USAGE;
 err:
 	return ret;
 }
@@ -1634,8 +1735,11 @@ BAREBOX_CMD_HELP_START(edp_debug)
 BAREBOX_CMD_HELP_TEXT("eDP debug tools")
 BAREBOX_CMD_HELP_OPT("no args\t", "dump some regs")
 BAREBOX_CMD_HELP_OPT("s\t\t", "retry setup")
-BAREBOX_CMD_HELP_OPT("g addr\t\t", "dump some regs")
-BAREBOX_CMD_HELP_OPT("w addr value\t", "dump some regs")
+BAREBOX_CMD_HELP_OPT("g addr\t\t", "get DPCD reg")
+BAREBOX_CMD_HELP_OPT("w addr value\t", "set DPCD reg")
+BAREBOX_CMD_HELP_OPT("p value\t", "set PXL_PLL clock")
+BAREBOX_CMD_HELP_OPT("c value\t", "set pixelclock for M/N calc")
+BAREBOX_CMD_HELP_OPT("t value\t", "enable test pattern (1-3), 0-disable")
 BAREBOX_CMD_HELP_END
 
 BAREBOX_CMD_START(edp_debug)
@@ -1700,6 +1804,10 @@ static int tc_probe(struct device_d *dev)
 	if (ret)
 		goto err;
 
+	ret = tc_get_display_props(tc);
+	if (ret)
+		goto err;
+
 	/* register i2c aux port */
 	tc->adapter.master_xfer = tc_aux_i2c_xfer;
 	tc->adapter.nr = -1; /* any free */
@@ -1720,7 +1828,7 @@ static int tc_probe(struct device_d *dev)
 		return ret;
 
 	/* set defaults */
-	tc->pxl_clk = 80000000;	/* pll used for test pattern */
+	tc->pll_clk = 133000000;	/* pll used for test pattern */
 	/* pre-read edid */
 	ret = tc_read_edid(tc);
 	/* ignore it for now */
