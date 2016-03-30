@@ -40,8 +40,6 @@
 /* debug */
 #include <command.h>
 
-#define AUTO_MN
-
 /* registers */
 #define DPIPXLFMT		0x0440
 #define POCTRL			0x0448	/* not defined in DS */
@@ -135,8 +133,6 @@ struct tc_data {
 	/* mode */
 	struct fb_videomode	*mode;
 
-	/* real pixeclock */
-	u32			pxl_clk;
 	/* PLL pixelclock */
 	u32			pll_clk;
 	u32			pll_clk_real;
@@ -612,18 +608,16 @@ err:
 	return ret;
 }
 
-#define CLOCK_ROUND	10000
-static int tc_stream_clock_calc(struct tc_data *tc, u32 clk)
+static int tc_stream_clock_calc(struct tc_data *tc)
 {
 	int ret;
-	u32 g;
-	u32 N;
-	u32 M;
-	u32 ls;
 	/*
-	 * If the Stream clock and Link Symbol clock are asynchronous with each other, the value of M changes over
-	 * time. This way of generating link clock and stream clock is called Asynchronous Clock mode. The value M
-	 * must change while the value N stays constant. The value of N in this Asynchronous Clock mode must be set
+	 * If the Stream clock and Link Symbol clock are
+	 * asynchronous with each other, the value of M changes over
+	 * time. This way of generating link clock and stream
+	 * clock is called Asynchronous Clock mode. The value M
+	 * must change while the value N stays constant. The
+	 * value of N in this Asynchronous Clock mode must be set
 	 * to 2^15 or 32,768.
 	 *
 	 * LSCLK = 1/10 of high speed link clock
@@ -632,43 +626,7 @@ static int tc_stream_clock_calc(struct tc_data *tc, u32 clk)
 	 * M/N = f_STRMCLK / f_LSCLK
 	 *
 	 */
-
-	if (tc->link.rate == 0x0a)
-		ls = 270000000u; /* 270 MHz */
-	else
-		ls = 162000000u; /* 162 MHz */
-#if 0
-	/* sync mode */
-	g = gcd(clk, ls);
-	N = ls / g;
-	M = clk / g;
-#if 0
-	/* from exel file */
-	if (N < 10) {
-		M *= 20; N *= 20;
-	} else if (N < 20) {
-		M *= 10; N *= 10;
-	} else if (N < 40) {
-		M *= 5;  N *= 5;
-	} else if (N < 100) {
-		M *= 2;  N *= 2;
-	}
-#else
-	while (N < 5000) {
-		M *= 3;
-		N *= 3;
-	};
-#endif
-#else
-	/* async mode. accordind DP standart */
-	N = 32768;	/* 2^15 */
-	g = ls / N;
-	M = clk / g;
-#endif
-	dev_info(tc->dev, "MNgen: N = %u, M = %u\n", N, M);
-	tc_write(DP0_VIDMNGEN0, M);
-	tc_write(DP0_VIDMNGEN1, N);
-	tc_write(DP0_VMNGENSTATUS, M);
+	tc_write(DP0_VIDMNGEN1, 32768);
 
 	return 0;
 err:
@@ -901,12 +859,6 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 		(0 << 1) |	/* HS_P =? HSync polarity? */
 		(1 << 0) |	/* DE_P =? DE polarity? */
 		0);
-
-	/*
-	 * Save clock
-	 * TODO: get this vaule directly from DI
-	 */
-	tc->pxl_clk = 132000000; //PICOS2KHZ(mode->pixclock) * 1000UL;
 
 	return 0;
 err:
@@ -1199,11 +1151,7 @@ static int tc_main_link_setup(struct tc_data *tc)
 		goto err;
 
 	/* set M/N */
-	if (tc->test_pattern) {
-		ret = tc_stream_clock_calc(tc, tc->pll_clk_real);
-	} else {
-		ret = tc_stream_clock_calc(tc, tc->pxl_clk);
-	}
+	ret = tc_stream_clock_calc(tc);
 	if (ret)
 		goto err;
 
@@ -1227,10 +1175,8 @@ static int tc_main_link_stream(struct tc_data *tc, int state)
 	dev_info(tc->dev, "stream: %d\n", state);
 
 	if (state) {
-		value = 
-#ifdef AUTO_MN
+		value =
 			(1 << 6) |	/* enable the auto-generation of M/N values for video */
-#endif
 			(1 << 0) |	/* DPTX function enable */
 			0;
 
@@ -1275,14 +1221,6 @@ static int tc_get_videomodes(struct tc_data *tc, struct display_timings *timings
 #else
 	if (tc->edid) {
 		ret = edid_to_display_timings(timings, tc->edid);
-		/* Clock hack */
-		if (1) {
-			struct fb_videomode *mode;
-
-			mode = timings->modes;
-			mode->pixclock = KHZ2PICOS(132000);
-			mode->vsync_len += 5;
-		}
 	} else {
 		struct fb_videomode *mode;
 
@@ -1414,8 +1352,8 @@ static int tc_debug_dump(struct tc_data *tc)
 		do_div(freq, N);
 		printf("%dM * %d / %d = %u\n",
 			rate, M, N, (u32)freq);
-		printf("Should be %u\n",
-			tc->test_pattern ? tc->pll_clk_real : tc->pxl_clk);
+		if (tc->test_pattern)
+			printf("Should be %u\n", tc->pll_clk_real);
 	}
 
 	return 0;
@@ -1610,17 +1548,6 @@ static int do_edp_debug(int argc, char *argv[])
 		return 0;
 	}
 
-	/* M/N values */
-	if ((argc == 3) && (!strcmp(argv[1], "c"))) {
-		u32 clk;
-
-		clk = simple_strtol(argv[2], NULL, 0);
-		ret = tc_stream_clock_calc(tc, clk);
-		if (ret)
-			goto err;
-		return 0;
-	}
-
 	if ((argc == 3) && (!strcmp(argv[1], "t"))) {
 		int type;
 
@@ -1645,7 +1572,6 @@ BAREBOX_CMD_HELP_OPT("s\t\t", "retry setup")
 BAREBOX_CMD_HELP_OPT("g addr\t\t", "get DPCD reg")
 BAREBOX_CMD_HELP_OPT("w addr value\t", "set DPCD reg")
 BAREBOX_CMD_HELP_OPT("p value\t", "set PXL_PLL clock")
-BAREBOX_CMD_HELP_OPT("c value\t", "set pixelclock for M/N calc")
 BAREBOX_CMD_HELP_OPT("t value\t", "enable test pattern (1-3), 0-disable")
 BAREBOX_CMD_HELP_END
 
