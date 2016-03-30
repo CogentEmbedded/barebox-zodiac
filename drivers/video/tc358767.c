@@ -586,7 +586,6 @@ static int tc_pxl_pll_en(struct tc_data *tc, u32 refclk)
 	mdelay(100);
 
 	/* save */
-	tc->pll_clk = pixelclock;
 	tc->pll_clk_real = best_pixelclock;
 
 	return 0;
@@ -640,6 +639,9 @@ static int tc_test_pattern(struct tc_data *tc, unsigned int type)
 
 	if (type > 3)
 		return -EINVAL;
+
+	if (!tc->pll_clk)
+		tc->pll_clk = PICOS2KHZ(tc->mode->pixclock) * 1000UL;
 
 	if (type) {
 		ret = tc_pxl_pll_en(tc, 19200000);
@@ -1658,8 +1660,6 @@ static int tc_probe(struct device_d *dev)
 	if (ret)
 		return ret;
 
-	/* set defaults */
-	tc->pll_clk = 138500000;	/* pll used for test pattern */
 	/* pre-read edid */
 	ret = tc_read_edid(tc);
 	/* ignore it for now */
