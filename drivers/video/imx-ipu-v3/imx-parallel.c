@@ -64,9 +64,7 @@ struct imx_pd {
 static int imx_pd_get_modes(struct imx_pd *imx_pd,
 				struct display_timings *timings)
 {
-	printf("imx_pd_get_modes\n");
 	if (imx_pd->timings) {
-		printf(" got timings\n");
 		timings->num_modes = imx_pd->timings->num_modes;
 		timings->native_mode = imx_pd->timings->native_mode;
 		timings->modes = imx_pd->timings->modes;
@@ -75,7 +73,6 @@ static int imx_pd_get_modes(struct imx_pd *imx_pd,
 	}
 
 	/* if no timing provided assume it is provided by next node */
-	printf(" asking next vpl node\n");
 	return vpl_ioctl(&imx_pd->vpl, 1, VPL_GET_VIDEOMODES, timings);
 }
 
