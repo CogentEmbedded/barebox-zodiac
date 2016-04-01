@@ -42,7 +42,6 @@
 
 /* registers */
 #define DPIPXLFMT		0x0440
-#define POCTRL			0x0448	/* not defined in DS */
 
 #define VPCTRL0			0x0450
 #define HTIM01			0x0454
@@ -853,15 +852,6 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 		(1 << 5) |			/* 8 bit per component */
 		0);
 
-	/* POCTRL - not defined in DS */
-	/* assume 1 - mean Act low as in DP0_SYNCVAL */
-	tc_write(POCTRL,
-		(1 << 3) |	/* PClk_P =? PCLK polarity? */
-		(0 << 2) |	/* VS_P =? VSync polarity? */
-		(0 << 1) |	/* HS_P =? HSync polarity? */
-		(1 << 0) |	/* DE_P =? DE polarity? */
-		0);
-
 	return 0;
 err:
 	return ret;
@@ -893,7 +883,6 @@ static int tc_main_link_setup(struct tc_data *tc)
 	tc_write(DP_PHY_CTRL, //0x03000007);	should be 0x03000017
 		(1 << 25)|	/* AUX PHY BGR Enable */
 		(1 << 24)|	/* PHY Power Switch Enable */
-		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
 		(1 << 2) |	/* Reserved */
 		(1 << 1) |	/* PHY Aux Channel0 Enable */
 		(1 << 0) |	/* PHY Main Channel0 Enable */
@@ -929,7 +918,6 @@ static int tc_main_link_setup(struct tc_data *tc)
 		(1 << 24)|	/* PHY Power Switch Enable */
 		(1 << 12)|	/* Reset DP PHY1 Main Channel */
 		(1 << 8) |	/* Reset DP PHY0 Main Channel */
-		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
 		(1 << 2) |	/* Reserved */
 		(1 << 1) |	/* PHY Aux Channel0 Enable */
 		(1 << 0) |	/* PHY Main Channel0 Enable */
@@ -938,7 +926,6 @@ static int tc_main_link_setup(struct tc_data *tc)
 	tc_write(DP_PHY_CTRL,
 		(1 << 25)|	/* AUX PHY BGR Enable */
 		(1 << 24)|	/* PHY Power Switch Enable */
-		///* !!! */ (1 << 4) |	/* PHY Main Channel1 Enable */
 		(1 << 2) |	/* Reserved */
 		(1 << 1) |	/* PHY Aux Channel0 Enable */
 		(1 << 0) |	/* PHY Main Channel0 Enable */
