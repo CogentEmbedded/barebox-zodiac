@@ -846,6 +846,14 @@ static int tc_set_video_mode(struct tc_data *tc, struct fb_videomode *mode)
 		(mode->hsync_len << 0)|		/* Hsync width */
 		0);
 
+	tc_write(DPIPXLFMT,
+		(1 << 10)|			/* VSYNC Polarity Control = Low */
+		(1 << 9) |			/* HSYNC Polarity Control = Low */
+		(0 << 8) |			/* DE Polarity Control */
+		(0 << 2) |			/* Alignment of pixels = 0: Config1 (LSB aligned) */
+		(0 << 0) |			/* RGB888 */
+		0);
+
 	tc_write(DP0_MISC,
 		(0x3e << 23)|			/* max_tu_symbol */
 		(0x3f << 16)|			/* tu_size */
@@ -1209,7 +1217,14 @@ static int tc_get_videomodes(struct tc_data *tc, struct display_timings *timings
 	return edid_to_display_timings(timings, timings->edid);
 #else
 	if (tc->edid) {
+		struct fb_videomode *mode;
+
 		ret = edid_to_display_timings(timings, tc->edid);
+
+		mode = timings->modes;
+		/* hsync, vsync active low */
+		mode->sync &= ~(FB_SYNC_HOR_HIGH_ACT |
+				FB_SYNC_VERT_HIGH_ACT);
 	} else {
 		struct fb_videomode *mode;
 
