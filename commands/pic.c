@@ -16,7 +16,8 @@
 #include <command.h>
 #include <errno.h>
 #include <net.h>
-#include <hwmon.h>
+#include <aiodev.h>
+
 
 // IMS_PATCH: Runtime support of 2 different environment devices (MMC/SF) ------------
 #include <environment.h>
@@ -38,46 +39,45 @@ int bootFailureIncremented = 0;
 struct zii_pic_mfd *pic = NULL;
 
 /* Each hwmon node has this additional data */
-struct pic_hwmon_data {
-	struct zii_pic_mfd 	*pic;
-	struct hwmon_sensor	sensor;
-	int			n;
+struct pic_aiodev_data {
+	struct zii_pic_mfd *pic;
+	struct aiodevice    aiodev;
 };
 
-static int pic_hwmon_read(struct hwmon_sensor *sensor, s32 *reading);
+static int pic_aiodev_read(struct aiochannel *chan, int *val);
 
-static inline struct pic_hwmon_data *to_pic_data(struct hwmon_sensor *sensor)
+static inline struct pic_aiodev_data *
+to_pic_data(struct aiochannel *chan)
 {
-	return container_of(sensor, struct pic_hwmon_data, sensor);
+	return container_of(chan->aiodev, struct pic_aiodev_data, aiodev);
 }
 
-int pic_hwmon_reg(struct zii_pic_mfd *adev, int n)
+int pic_aiodev_reg(struct zii_pic_mfd *adev, int n)
 {
 	int i;
 	int err;
-	struct pic_hwmon_data *data;
+	struct pic_aiodev_data *data;
+
+	data = xzalloc(sizeof(*data));
+	data->pic = adev;
+
+	data->aiodev.name = "pic_t";
+	data->aiodev.read = pic_aiodev_read;
+	data->aiodev.num_channels = n;
+	data->aiodev.channels = xmalloc(n * sizeof(data->aiodev.channels[0]));
 
 	for (i = 0; i < n; i++) {
-		data = xzalloc(sizeof(struct pic_hwmon_data));
-		if (!data)
-			return -ENOMEM;
-
-		data->pic = adev;
-		data->n = i;
-
-		data->sensor.name = (const void *)xzalloc(MAX_HWMON_NAME);
-		snprintf((char *)data->sensor.name, MAX_HWMON_NAME, "pic_t%d", i);
-		data->sensor.read = pic_hwmon_read;
-
-		err = hwmon_sensor_register(&data->sensor);
-		if (err) {
-			free((void *)data->sensor.name);
-			free(data);
-			return err;
-		}
+		data->aiodev.channels[i] = xzalloc(sizeof(struct aiochannel));
+		data->aiodev.channels[i]->unit = "mC";
 	}
-	return 0;
+
+	err = aiodevice_register(&data->aiodev);
+	if (err)
+		free(data);
+
+	return err;
 }
+
 
 static ssize_t zii_eeprom_read(struct zii_pic_mfd *adev, int eeprom_type,
 		char *buf, loff_t off, size_t count)
@@ -231,7 +231,6 @@ int pic_eeprom_reg(struct zii_pic_mfd *adev, int type)
 	return 0;
 }
 
-
 int pic_init(struct console_device *cdev, int speed, int hw_id)
 {
 	if (pic)
@@ -273,8 +272,10 @@ int pic_init(struct console_device *cdev, int speed, int hw_id)
 		pic->cmd = zii_pic_rdu2_cmds;
 		pic->checksum_size = 2;
 		pic->checksum_type = N_MCU_CHECKSUM_CRC16;
-		/* register HWMON */
-		pic_hwmon_reg(pic, 2);
+
+		/* register aiodev */
+		pic_aiodev_reg(pic, 4);
+
 		/* register eeproms */
 		pic_eeprom_reg(pic, ZII_PIC_EEPROM_DDS);
 		pic_eeprom_reg(pic, ZII_PIC_EEPROM_RDU);
@@ -598,22 +599,31 @@ static int zii_pic_mcu_cmd_no_response(struct zii_pic_mfd *adev,
 	return 0;
 }
 
-
-
-static int pic_hwmon_read(struct hwmon_sensor *sensor, s32 *reading)
+static int pic_aiodev_read(struct aiochannel *chan, int *val)
 {
-	int ret;
-	uint8_t data[1];
-	struct pic_hwmon_data *pic_hw = to_pic_data(sensor);
+	int ret, n;
 
-	data[0] = pic_hw->n;
+	struct pic_aiodev_data *pic_hw = to_pic_data(chan);
 
-	/* update status data */
-	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_TEMPERATURE, data, 1);
-	if (ret)
-		return ret;
+	n = aiochannel_get_index(chan);
 
-	*reading = pic_hw->pic->temp * 500;
+	if (n < 2) {
+		uint8_t data[1];
+		data[0] = n;
+
+		/* update status data */
+		ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_TEMPERATURE, data, 1);
+		if (ret)
+			return ret;
+
+		*val = pic_hw->pic->temp * 500;
+	} else {
+		ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_STATUS, NULL, 0);
+		if (ret)
+			return ret;
+
+		*val = (n == 2) ? pic->temperature : pic->temperature_2;
+	}
 
 	return 0;
 }
@@ -901,35 +911,6 @@ int do_pic_status(int argc, char *argv[])
 	return 0;
 }
 
-int do_pic_temp_1(int argc, char *argv[])
-{
-	int ret;
-
-	/* update status data */
-	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_STATUS, NULL, 0);
-	if (ret)
-		return ret;
-
-	printf("T1 = %d.%03d\n",
-		pic->temperature / 1000, pic->temperature % 1000);
-
-	return 0;
-}
-
-int do_pic_temp_2(int argc, char *argv[])
-{
-	int ret;
-
-	/* update status data */
-	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_GET_STATUS, NULL, 0);
-	if (ret)
-		return ret;
-
-	printf("T2 = %d.%03d\n",
-		pic->temperature_2 / 1000, pic->temperature_2 % 1000);
-
-	return 0;
-}
 
 int do_pic_get_fw(int argc, char *argv[])
 {
@@ -1149,18 +1130,6 @@ BAREBOX_CMD_END
 BAREBOX_CMD_START(pic_status)
 	.cmd		= do_pic_status,
 	BAREBOX_CMD_DESC("Get PIC status")
-	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
-BAREBOX_CMD_END
-
-BAREBOX_CMD_START(pic_temp_1)
-	.cmd		= do_pic_temp_1,
-	BAREBOX_CMD_DESC("Get PIC temperature 1")
-	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
-BAREBOX_CMD_END
-
-BAREBOX_CMD_START(pic_temp_2)
-	.cmd		= do_pic_temp_2,
-	BAREBOX_CMD_DESC("Get PIC temperature 2")
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
