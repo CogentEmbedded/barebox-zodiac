@@ -32,6 +32,7 @@ struct font_desc {
 
 extern int find_font_index(const struct font_desc *font, int ch);
 extern const struct font_desc *find_font_enum(int n);
+extern const struct font_desc *find_font_height(int height);
 extern struct param_d *add_param_font(struct device_d *dev,
 		int (*set)(struct param_d *p, void *priv),
 		int (*get)(struct param_d *p, void *priv),

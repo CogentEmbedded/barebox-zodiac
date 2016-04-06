@@ -69,6 +69,18 @@ const struct font_desc *find_font_enum(int n)
 	return NULL;
 }
 
+const struct font_desc *find_font_height(int height)
+{
+	struct font_desc *f;
+
+	list_for_each_entry(f, &fonts_list, list) {
+		if (f->height == height)
+			return f;
+	}
+
+	return NULL;
+}
+
 struct param_d *add_param_font(struct device_d *dev,
 		int (*set)(struct param_d *p, void *priv),
 		int (*get)(struct param_d *p, void *priv),
