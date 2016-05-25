@@ -38,6 +38,9 @@
 /* gcd */
 #include <linux/gcd.h>
 
+/* hack */
+#include "imx-ipu-v3/imx-ipu-v3.h"
+
 /* debug */
 #include <command.h>
 
@@ -1465,6 +1468,16 @@ static int tc_ioctl(struct vpl *vpl, unsigned int port,
 		dev_dbg(tc->dev, "VPL_GET_VIDEOMODES\n");
 
 		ret = tc_get_videomodes(tc, ptr);
+	break;
+
+	/* hack */
+	case IMX_IPU_VPL_DI_MODE:
+		dev_dbg(tc->dev, "IMX_IPU_VPL_DI_MODE\n");
+
+		ipu_mode = ptr;
+
+		ipu_mode->di_clkflags = IPU_DI_CLKMODE_NON_FRACTIONAL;
+		ipu_mode->interface_pix_fmt = V4L2_PIX_FMT_RGB24;
 	break;
 		
 	default:
