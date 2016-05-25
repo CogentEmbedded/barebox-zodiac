@@ -111,6 +111,7 @@ static int imx_thermal_probe(struct device_d *dev)
 	struct device_node *node;
 	struct imx_thermal_data *imx_thermal;
 	struct cdev *ocotp;
+	char *path;
 	struct device_d *anatop;
 	int t1, n1, t2, n2;
 	int ret;
@@ -121,14 +122,14 @@ static int imx_thermal_probe(struct device_d *dev)
 		return -ENODEV;
 	}
 
-	ocotp = cdev_by_device_node(node);
-	if (!ocotp) {
+	ret = of_find_path_by_node(node, &path, 0);
+	if (ret) {
 		dev_err(dev, "no OCOTP character device\n");
 		return -ENODEV;
 	}
 
-	ret = cdev_do_open(ocotp, O_RDONLY);
-	if (!ret) {
+	ocotp = cdev_open(path, O_RDONLY);
+	if (!ocotp) {
 		ret = cdev_read(ocotp,
 				&ocotp_ana1, sizeof(ocotp_ana1),
 				OCOTP_ANA1_OFFSET, 0);
