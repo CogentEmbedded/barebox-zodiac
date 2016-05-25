@@ -1,0 +1,24 @@
+#!/bin/sh
+
+if [ "$1" = menu ]; then
+	init-menu-add-entry "$0" "Automountpoints"
+	exit
+fi
+
+# automount tftp server based on $eth0.serverip
+
+eth0.serverip="192.168.1.147"
+mkdir -p /mnt/tftp
+automount /mnt/tftp 'ifup eth0 && mount -t tftp $eth0.serverip /mnt/tftp'
+
+# debug usb-ether tftp
+#mkdir -p /mnt/tftp
+#automount /mnt/tftp 'ifup eth1 && mount -t tftp $eth1.serverip /mnt/tftp'
+
+# eMMC
+mkdir -p /mnt/emmc
+automount -d /mnt/emmc 'mmc3.probe=1 && [ -e /dev/mmc3.1 ] && mount /dev/mmc3.1 /mnt/emmc'
+
+# External SD
+mkdir -p /mnt/mmc1
+automount -d /mnt/mmc1 'mmc1.probe=1 && [ -e /dev/mmc1.0 ] && mount /dev/mmc1.0 /mnt/mmc1'

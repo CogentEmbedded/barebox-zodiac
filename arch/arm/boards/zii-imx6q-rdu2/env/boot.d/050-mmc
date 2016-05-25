@@ -1,0 +1,12 @@
+#!/bin/sh
+
+path="/mnt/mmc1"
+
+global.bootm.image="${path}/boot/zImage"
+
+oftree=${path}/boot/oftree
+if [ -f $oftree ]; then
+	global.bootm.oftree="$oftree"
+fi
+
+global.linux.bootargs.dyn.root="root=/dev/mmcblk0p1"
