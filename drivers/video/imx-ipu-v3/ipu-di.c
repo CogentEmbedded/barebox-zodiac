@@ -171,7 +171,7 @@ static unsigned long clk_di_recalc_rate(struct clk *clk,
 {
 	struct ipu_di *di = container_of(clk, struct ipu_di, clk_di_pixel);
 	unsigned long outrate;
-	u32 div = ipu_di_read(di, DI_BS_CLKGEN0);
+	u32 div = ipu_di_read(di, DI_BS_CLKGEN0) & 0xffff;
 
 	if (div < 0x10)
 		div = 0x10;
