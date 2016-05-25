@@ -99,10 +99,11 @@ static int imx6_zodiac_lateinit(void)
 	struct console_device *cdev;
 
 	for_each_console(cdev) {
-		if (!(strcmp(cdev->devname, "serial3"))) {
+		if ((cdev->devname) && (!(strcmp(cdev->devname, "serial3")))) {
 			printf("Init PIC on %s\n", cdev->devname);
 
 			pic_init(cdev, RDU2_PIC_BAUD_RATE, PIC_HW_ID_RDU2);
+			break;
 		}
 	}
 
