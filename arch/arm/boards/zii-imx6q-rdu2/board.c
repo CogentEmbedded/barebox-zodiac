@@ -19,6 +19,7 @@
 #include <init.h>
 #include <mach/bbu.h>
 #include <mach/imx6.h>
+#include <zii/pic.h>
 
 #define RDU2_DAC1_RESET	IMX_GPIO_NR(1, 0)
 #define RDU2_DAC2_RESET	IMX_GPIO_NR(1, 2)
@@ -151,3 +152,22 @@ static int rdu2_devices_init(void)
 	return 0;
 }
 device_initcall(rdu2_devices_init);
+
+#ifdef CONFIG_CMD_ZODIAC_PIC
+static int imx6_zodiac_coredevice_init(void)
+{
+	struct console_device *cdev;
+
+	for_each_console(cdev) {
+		if (cdev->devname &&
+		    !(strcmp(cdev->devname, "serial3"))) {
+			printf("Init PIC on %s\n", cdev->devname);
+			pic_init(cdev, RDU2_PIC_BAUD_RATE, PIC_HW_ID_RDU2);
+			break;
+		}
+	}
+
+	return 0;
+}
+coredevice_initcall(imx6_zodiac_coredevice_init);
+#endif

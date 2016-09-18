@@ -2133,7 +2133,8 @@ endmenu
 menu "Zodiac"
 config CMD_ZODIAC_PIC
 	bool
-	depends on MACH_ZODIAC
+	depends on MACH_ZODIAC || MACH_ZII_RDU2
+	select AIODEV
 	prompt "Zodiac PIC-related commands"
 	help
 	  Enable/disable WD, read EEPROM, boot reason etc.
