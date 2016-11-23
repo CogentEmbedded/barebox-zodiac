@@ -1,0 +1,4 @@
+#!/bin/sh
+
+splash /env/logo/rave.png
+fb0.enable=1
