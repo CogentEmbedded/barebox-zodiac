@@ -154,6 +154,78 @@ static int rdu2_devices_init(void)
 device_initcall(rdu2_devices_init);
 
 #ifdef CONFIG_CMD_ZODIAC_PIC
+enum rdu2_lcd_interface_type {
+	IT_SINGLE_LVDS,
+	IT_DUAL_LVDS,
+	IT_EDP
+};
+
+struct rdu2_lcd_info {
+	enum rdu2_lcd_interface_type type;
+	char *compatible;
+};
+
+static struct rdu2_lcd_info lcd_info[] = {
+	{ IT_SINGLE_LVDS, "innolux,g121i1-l01" }, /* unknown panel fallback */
+	{ IT_SINGLE_LVDS, "innolux,g121i1-l01" }, /* Innolux 10.1" */
+	{ IT_SINGLE_LVDS, "nec,nl12880bc20-05" }, /* NEC 12.1" */
+	{ IT_EDP, "" }, /* NLT 11.6" */
+	{ IT_DUAL_LVDS, "auo,g133han01" }, /* AUO 13.3" */
+	{ IT_DUAL_LVDS, "auo,g185han01" }, /* AUO 18.5" */
+	{ IT_DUAL_LVDS, "nlt,nl192108ac18-02d" }, /* NLT 15.6" */
+};
+
+static int lcd_type;
+
+static int rdu2_fixup_display(struct device_node *root, void *context)
+{
+	struct device_node *np;
+	const char *compatible = lcd_info[lcd_type].compatible;
+
+	/* If the panel is eDP, just enable the parallel output and eDP bridge */
+	if (lcd_info[lcd_type].type == IT_EDP) {
+		pr_info("Found eDP display, enabling parallel output and eDP bridge.\n");
+		np = of_find_compatible_node(root, NULL,
+					     "fsl,imx-parallel-display");
+		if (!np)
+			return 0;
+		of_device_enable(np);
+
+		np = of_find_compatible_node(root, NULL,
+					     "toshiba,tc358767");
+		if (!np)
+			return 0;
+		of_device_enable(np);
+
+		return 0;
+	}
+
+	/* LVDS panels need the correct compatible */
+	pr_info("Found LVDS display, enabling %s channel LDB and panel with compatible \"%s\".\n",
+		lcd_info[lcd_type].type == IT_DUAL_LVDS ? "dual" : "single",
+		compatible);
+
+	np = of_find_node_by_name(root, "panel");
+	if (!np)
+		return 0;
+	of_device_enable(np);
+	of_set_property(np, "compatible", compatible, strlen(compatible) +1, 1);
+
+	/* enable LDB channel 0 and set correct interface mode */
+	np = of_find_compatible_node(root, NULL, "fsl,imx6q-ldb");
+	if (!np)
+		return 0;
+	of_device_enable(np);
+	if (lcd_info[lcd_type].type == IT_DUAL_LVDS)
+		of_set_property(np, "fsl,dual-channel", NULL, 0, 1);
+	np = of_find_node_by_name(np, "lvds-channel@0");
+	if (!np)
+		return 0;
+	of_device_enable(np);
+
+	return 0;
+}
+
 static int imx6_zodiac_coredevice_init(void)
 {
 	struct console_device *cdev;
@@ -166,6 +238,16 @@ static int imx6_zodiac_coredevice_init(void)
 			break;
 		}
 	}
+
+	/* get display type and register DT fixup */
+	lcd_type = pic_get_lcd_type();
+	if (lcd_type < 0)
+		return 0;
+
+	if (lcd_type == 0xff)
+		lcd_type = 0;
+
+	of_register_fixup(rdu2_fixup_display, NULL);
 
 	return 0;
 }
