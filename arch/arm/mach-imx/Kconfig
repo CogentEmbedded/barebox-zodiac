@@ -433,6 +433,7 @@ config MACH_ZII_RDU1
 
 config MACH_ZII_RDU2
 	bool "ZII i.MX6Q(+) RDU2"
+	select ZII_PN_FIXUP
 	select ARCH_IMX6
 
 config MACH_ZII_VF610_DEV
