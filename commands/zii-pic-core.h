@@ -240,6 +240,8 @@ enum zii_pic_cmd_id {
 	ZII_PIC_CMD_COPPER_REV,
 	ZII_PIC_CMD_LCD_DATA_STABLE,
 
+	ZII_PIC_CMD_LCD_TYPE,
+
 	/* last one to get amount of supported commands */
 	ZII_PIC_CMD_COUNT
 };
@@ -339,6 +341,7 @@ struct zii_pic_mfd {
 	int				rdu_rev;
 	int				dds_rev;
 	int				temp;
+	int				lcd_type;
 
 	struct pic_version		bootloader_version;
 	struct pic_version		firmware_version;

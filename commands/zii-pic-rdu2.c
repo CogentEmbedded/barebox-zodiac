@@ -76,6 +76,8 @@ struct pic_cmd_desc zii_pic_rdu2_cmds[ZII_PIC_CMD_COUNT] = {
 		{0x28, 0, zii_pic_rdu2_process_copper},
 	[ZII_PIC_CMD_LCD_DATA_STABLE] =
 		{0xBE, 0, NULL},
+	[ZII_PIC_CMD_LCD_TYPE] =
+		{0x2E, 0, zii_pic_rdu2_process_lcd_type},
 };
 
 int zii_pic_rdu2_process_status_response(struct zii_pic_mfd *adev,
@@ -186,6 +188,19 @@ int zii_pic_rdu2_process_copper(struct zii_pic_mfd *adev,
 
 	adev->rdu_rev = data[0];
 	adev->dds_rev = data[1];
+
+	return 0;
+}
+
+int zii_pic_rdu2_process_lcd_type(struct zii_pic_mfd *adev,
+				u8 *data, u8 size)
+{
+	pr_debug("%s: enter\n", __func__);
+
+	if (size != 1)
+		return -EINVAL;
+
+	adev->lcd_type = data[0];
 
 	return 0;
 }

@@ -289,6 +289,20 @@ int pic_init(struct console_device *cdev, int speed, int hw_id)
 	return 0;
 }
 
+int pic_get_lcd_type(void)
+{
+	int ret;
+
+	if ((!pic) || (!pic->cdev))
+		return -ENODEV;
+
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_LCD_TYPE, NULL, 0);
+	if (ret)
+		return -ENODEV;
+
+	return pic->lcd_type;
+}
+
 void pic_putc(char c)
 {
 	pic->cdev->putc(pic->cdev, c);
@@ -1197,42 +1211,20 @@ BAREBOX_CMD_START(z_lcd_stable)
 	BAREBOX_CMD_GROUP(CMD_GRP_MISC)
 BAREBOX_CMD_END
 
-/* EEPROM-related commands */
-
 int do_z_get_lcd(int argc, char *argv[])
 {
 	int ret;
-	uint8_t data[1];
 
 	if ((!pic) || (!pic->cdev))
 		return -ENODEV;
 	if (argc != 1)
 		return COMMAND_ERROR_USAGE;
 
-	ret = zii_eeprom_read(pic, ZII_PIC_EEPROM_RDU, data, 0x0050, 1);
-	if (ret != 1)
+	ret = zii_pic_mcu_cmd(pic, ZII_PIC_CMD_LCD_TYPE, NULL, 0);
+	if (ret)
 		return ret;
 
-	switch(data[0]) {
-	case 0x01:
-		printf("10.1\"\n");
-	break;
-	case 0x02:
-		printf("12.1\"\n");
-	break;
-	case 0x03:
-		printf("11.6\"\n");
-	break;
-	case 0x04:
-		printf("13.3\"\n");
-	break;
-	case 0x05:
-		printf("18.5\"\n");
-	break;
-	default:
-		printf("UNKNOWN: 0x%02x\n", data[0]);
-	break;
-	}
+	printf("LCD type: %d\n", pic->lcd_type);
 
 	return 0;
 }

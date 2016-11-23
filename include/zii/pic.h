@@ -12,5 +12,6 @@ enum pic_hw_id {
 #define RDU2_PIC_BAUD_RATE	1000000
 
 int pic_init(struct console_device *cdev, int speed, int hw_id);
+int pic_get_lcd_type(void);
 
 #endif /* _PIC_H_ */
