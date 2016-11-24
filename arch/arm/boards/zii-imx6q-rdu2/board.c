@@ -239,6 +239,9 @@ static int imx6_zodiac_coredevice_init(void)
 		}
 	}
 
+	/* disable the PIC watchdog */
+	pic_disable_watchdog();
+
 	/* get display type and register DT fixup */
 	lcd_type = pic_get_lcd_type();
 	if (lcd_type < 0)
