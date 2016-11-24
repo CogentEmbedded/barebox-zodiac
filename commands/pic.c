@@ -1335,6 +1335,16 @@ int do_pic_set_wdt (int argc, char *argv[])
 	return 0;
 }
 
+void pic_disable_watchdog(void)
+{
+	unsigned char data[64] = { 0, 60, 0 };
+
+	pic_reset_comms();
+	pic_send_msg(data, CMD_SW_WDT, 3);
+	if (pic_recv_msg(data) <= 0)
+		pr_err("failed to disable PIC watchdog\n");
+}
+
 BAREBOX_CMD_HELP_START(pic_setwdt)
 	BAREBOX_CMD_HELP_TEXT("Set the Watchdog Timer (WDT) on the Microchip PIC")
 	BAREBOX_CMD_HELP_TEXT("")
