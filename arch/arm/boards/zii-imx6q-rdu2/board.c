@@ -173,6 +173,7 @@ static struct rdu2_lcd_info lcd_info[] = {
 	{ IT_DUAL_LVDS, "auo,g133han01" }, /* AUO 13.3" */
 	{ IT_DUAL_LVDS, "auo,g185han01" }, /* AUO 18.5" */
 	{ IT_DUAL_LVDS, "nlt,nl192108ac18-02d" }, /* NLT 15.6" */
+	{ IT_DUAL_LVDS, "auo,p320hvn03" }, /* AUO 31.5" */
 };
 
 static int lcd_type;
