@@ -30,6 +30,7 @@
 #include <linux/stat.h>
 #include <ioctl.h>
 #include <mach/bbu.h>
+#include <libfile.h>
 
 #define FLASH_HEADER_OFFSET_MMC		0x400
 #define FLASH_HEADER_OFFSET_FLASH	0x400
