@@ -21,7 +21,6 @@
 #include <init.h>
 #include <environment.h>
 #include <mach/imx51-regs.h>
-#include <fec.h>
 #include <gpio.h>
 #include <asm/armlinux.h>
 #include <generated/mach-types.h>
@@ -43,7 +42,6 @@
 #include <mach/iomux-mx51.h>
 #include <mach/devices-imx51.h>
 #include <mach/revision.h>
-#include <mach/imx-flash-header.h>
 
 #define MX51_CCM_CACRR 0x10
 
