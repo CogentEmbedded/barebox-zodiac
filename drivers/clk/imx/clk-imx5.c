@@ -244,6 +244,8 @@ static void __init mx5_clocks_common_init(struct device_d *dev, void __iomem *ba
 		"ecspi_pred", base + CCM_CSCDR2, 19, 6);
 	clks[IMX5_CLK_CPU_PODF] = imx_clk_divider("cpu_podf",
 		"pll1_sw", base + CCM_CACRR, 0, 3);
+
+	clks[IMX5_CLK_USBOH3_GATE] = imx_clk_gate2("usboh3_gate", "ipg", base + CCM_CCGR2, 26);
 }
 
 static void mx5_clocks_mx51_mx53_init(void __iomem *base)
@@ -392,6 +394,12 @@ int __init mx51_clocks_init(struct device_d *dev, void __iomem *regs)
 	clkdev_add_physbase(clks[IMX5_CLK_IPG], MX51_ATA_BASE_ADDR, NULL);
 	clkdev_add_physbase(clks[IMX5_CLK_PER_ROOT], MX51_PWM1_BASE_ADDR, "per");
 	clkdev_add_physbase(clks[IMX5_CLK_PER_ROOT], MX51_PWM2_BASE_ADDR, "per");
+
+	clkdev_add_physbase(clks[IMX5_CLK_USBOH3_GATE], MX51_OTG_BASE_ADDR + 0x000, NULL);
+	clkdev_add_physbase(clks[IMX5_CLK_USBOH3_GATE], MX51_OTG_BASE_ADDR + 0x200, NULL);
+	clkdev_add_physbase(clks[IMX5_CLK_USBOH3_GATE], MX51_OTG_BASE_ADDR + 0x400, NULL);
+	clkdev_add_physbase(clks[IMX5_CLK_USBOH3_GATE], MX51_OTG_BASE_ADDR + 0x600, NULL);
+	clkdev_add_physbase(clks[IMX5_CLK_USBOH3_GATE], MX51_OTG_BASE_ADDR + 0x800, NULL);
 
 	if (IS_ENABLED(CONFIG_DRIVER_VIDEO_IMX_IPUV3))
 		mx51_clocks_ipu_init(regs);
