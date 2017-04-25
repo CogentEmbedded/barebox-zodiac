@@ -303,6 +303,29 @@ int pic_get_lcd_type(void)
 	return pic->lcd_type;
 }
 
+int pic_get_mac_address(unsigned int interface, u8 *mac)
+{
+	u8 tmp[6];
+	int ret;
+
+	if (interface > 1)
+		return -EINVAL;
+
+	ret = zii_eeprom_read(pic, ZII_PIC_EEPROM_RDU, tmp,
+			      0x180 + interface * 0x10, 6);
+	if (ret <= 0)
+		return -EIO;
+
+	mac[0] = tmp[5];
+	mac[1] = tmp[4];
+	mac[2] = tmp[3];
+	mac[3] = tmp[2];
+	mac[4] = tmp[1];
+	mac[5] = tmp[0];
+
+	return 0;
+}
+
 void pic_putc(char c)
 {
 	pic->cdev->putc(pic->cdev, c);

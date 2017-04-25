@@ -14,5 +14,6 @@ enum pic_hw_id {
 int pic_init(struct console_device *cdev, int speed, int hw_id);
 int pic_get_lcd_type(void);
 void pic_disable_watchdog(void);
+int pic_get_mac_address(unsigned int interface, u8 *mac);
 
 #endif /* _PIC_H_ */
