@@ -338,11 +338,11 @@ void do_pic_get_ip(void)
 	else {
 		/* printf("%x\n",ip_extracted);
 		printf("%x\n",netmask_extracted); */
-		ip_addr = strdup(ip_to_string(ip_extracted));
+		ip_addr = basprintf("%pI4", &ip_extracted);
 		setenv ("ipaddr", ip_addr);
-		netmask = strdup(ip_to_string(netmask_extracted));
+		netmask = basprintf("%pI4", &netmask_extracted);
 		setenv ("netmask", netmask);
-		env_val = asprintf("%s:::%s::eth0:", ip_addr, netmask);
+		env_val = basprintf("%s:::%s::eth0:", ip_addr, netmask);
 		setenv ("ipsetup", env_val);
 		free(env_val);
 		free(netmask);
