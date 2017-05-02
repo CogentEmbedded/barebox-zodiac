@@ -192,7 +192,8 @@ static int imx51_zodiac_lateinit(void)
 {
 	struct console_device *cdev;
 	for_each_console(cdev) {
-		if (!(strcmp(cdev->devname, "serial2"))) {
+		if (cdev->devname &&
+		    !(strcmp(cdev->devname, "serial2"))) {
 			printf("Init PIC on %s\n", cdev->devname);
 
 			pic_uart_init(cdev, 38400);
