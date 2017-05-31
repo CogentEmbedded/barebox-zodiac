@@ -28,6 +28,8 @@
 #include <fs.h>
 #include <of.h>
 #include <fcntl.h>
+#include <libfile.h>
+#include <globalvar.h>
 #include <mach/bbu.h>
 #include <nand.h>
 #include <notifier.h>
@@ -186,6 +188,42 @@ coredevice_initcall(imx51_zodiac_init);
 
 extern void pic_uart_init(struct console_device *cdev, int speed);
 
+static void import_spinor_vars(void)
+{
+	void *buf;
+	size_t size;
+	int ret;
+	char *p, *v, *n, *e, *g;
+
+	ret = read_file_2("/dev/dataflash0.config", &size, &buf, 1024);
+	if (ret) {
+		printf("Failed to read settings from spi flash\n");
+		return;
+	}
+
+	p = buf;
+	e = buf + size;
+
+	while (p != e && *p) {
+		v = p + strnlen(p, e - p);
+		if (v == e)
+			break;
+		v++;
+		n = v + strnlen(v, e - v);
+		if (n == e)
+			break;
+		n++;
+
+		g = basprintf("spinor.%s", p);
+		globalvar_add_simple(g, v);
+		free(g);
+
+		p = n;
+	}
+
+	free(buf);
+}
+
 static int imx51_zodiac_lateinit(void)
 {
 	struct console_device *cdev;
@@ -197,6 +235,8 @@ static int imx51_zodiac_lateinit(void)
 			pic_uart_init(cdev, 38400);
 		}
 	}
+
+	import_spinor_vars();
 
 	return 0;
 }
