@@ -16,6 +16,7 @@
 #include <command.h>
 #include <errno.h>
 #include <net.h>
+#include <globalvar.h>
 
 // IMS_PATCH: Runtime support of 2 different environment devices (MMC/SF) ------------
 #include <environment.h>
@@ -203,6 +204,38 @@ int pic_recv_msg(unsigned char *out)
 }
 
 
+void pic_import_ip(void)
+{
+	unsigned char data[64];
+	int len;
+	uint32_t ip_extracted, netmask_extracted;
+
+	pic_reset_comms();
+
+	data[0] = 0; // 0 = RDU, 1 = RJU
+	data[1] = 0; // 0 = Self, 1 = Pri Eth, 2 = Sec Eth, 3 = Aux Eth, 4 = SPB/SPU
+
+	pic_send_msg(data, CMD_REQ_IP_ADDR, 2);
+	len = pic_recv_msg(data);
+
+	if (len < 10) {
+		printf("Warning: could not import IP address from PIC\n");
+		return;
+	}
+
+	ip_extracted      = data[5] << 24 | data[4] << 16 | data[3] << 8 | data[2];
+	netmask_extracted = data[9] << 24 | data[8] << 16 | data[7] << 8 | data[6];
+
+	if (!ip_extracted)
+		return;
+
+	sprintf(data, "%pI4", &ip_extracted);
+	globalvar_add_simple("pic.ipaddr", data);
+
+	sprintf(data, "%pI4", &netmask_extracted);
+	globalvar_add_simple("pic.netmask", data);
+}
+
 
 /********************************************************************
  * Function:        int GetEepromData(uint16_t pageNum, uint8_t *data)
@@ -293,64 +326,6 @@ int pic_SendRduEepromData(uint16_t pageNum, uint8_t *data)
 	} else {
 		return 1;
 	}
-}
-
-/* IMS: Add U-Boot commands to Get the IP Address and Netmask and Turn on the LCD Backlight using the Microchip PIC */
-void do_pic_get_ip(void)
-{
-	unsigned char data[64];
-	int len;
-	uint32_t ip_extracted = 0;
-	uint32_t netmask_extracted = 0;
-	char *ip_addr;
-	char *netmask;
-	char *env_val;
-/*
-	// Check the platform to see if a PIC is attached
-	if (!(system_type == SYSTEM_TYPE__RDU_B ||
-		system_type == SYSTEM_TYPE__RDU_C) ) {
-
-		// All of these platforms do not have pics
-		// So set "ipsetup" to a empty string
-		setenv ("ipsetup","");
-
-		printf("*** This platform doesn't have a PIC, the IP address can't be retrieved in this manner ****\n");
-		return;
-	}
-*/
-	pic_reset_comms();
-
-	data[0] = 0; // 0 = RDU, 1 = RJU
-	data[1] = 0; // 0 = Self, 1 = Pri Eth, 2 = Sec Eth, 3 = Aux Eth, 4 = SPB/SPU
-
-	pic_send_msg(data, CMD_REQ_IP_ADDR, 2);
-	len = pic_recv_msg(data);
-
-	if (len > 0) {
-		ip_extracted      = data[5] << 24 | data[4] << 16 | data[3] << 8 | data[2];
-		netmask_extracted = data[9] << 24 | data[8] << 16 | data[7] << 8 | data[6];
-	}
-
-
-	if ((data[5]==0) && (data[4]==0) && (data[3]==0) && (data[2]==0) ){
-		setenv ("ipsetup","dhcp");
-	}
-	else {
-		/* printf("%x\n",ip_extracted);
-		printf("%x\n",netmask_extracted); */
-		ip_addr = basprintf("%pI4", &ip_extracted);
-		setenv ("ipaddr", ip_addr);
-		netmask = basprintf("%pI4", &netmask_extracted);
-		setenv ("netmask", netmask);
-		env_val = basprintf("%s:::%s::eth0:", ip_addr, netmask);
-		setenv ("ipsetup", env_val);
-		free(env_val);
-		free(netmask);
-		free(ip_addr);
-		/* saveenv(); */
-	}
-
-	return;
 }
 
 /* IMS: Add U-Boot commands to Turn on/off the LCD Backlight using the Microchip PIC */
