@@ -293,7 +293,6 @@ struct screen *fb_open(const char * fbdev)
 	return sc;
 
 failed_create:
-	free(sc);
 failed_screeninfo:
 	close(fd);
 
