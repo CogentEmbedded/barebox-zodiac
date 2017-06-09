@@ -81,7 +81,7 @@ static int load_environment(void)
 	if (IS_ENABLED(CONFIG_DEFAULT_ENVIRONMENT))
 		defaultenv_load("/env", 0);
 
-	envfs_load(default_environment_path, "/env", 0);
+	//envfs_load(default_environment_path, "/env", 0);
 	nvvar_load();
 
 	return 0;
