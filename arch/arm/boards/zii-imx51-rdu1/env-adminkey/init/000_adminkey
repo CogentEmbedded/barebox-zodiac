@@ -1,0 +1,60 @@
+#!/bin/sh
+
+echo
+echo "*** AdminKey barebox running ***"
+echo
+
+echo -n "* Hit any key to stop autoboot: "
+timeout -a 1 -v key
+if [ "$?" -ne 0 ]; then sh; fi
+
+echo "* Enabling display ..."
+
+fb0.enable=1
+sp.lcd_power=1
+sleep 1
+splash /env/images/Searching.png
+backlight0.brightness=50
+
+global linux.bootargs.fbcon="console=tty0"
+
+if [ "${sp.ipaddr}" != "" ]; then
+  echo "* Configured IP address: ${sp.ipaddr}"
+  global linux.bootargs.ipddr="pic_ipaddr=${sp.ipaddr}"
+fi
+
+if [ "${sp.netmask}" != "" ]; then
+  echo "* Configured netmask: ${sp.netmask}"
+  global linux.bootargs.netmask="pic_netmask=${sp.netmask}"
+fi
+
+echo "* Detecting USB devices ..."
+sp.usb_power=1
+usb
+
+mkdir /a
+
+for dev in /dev/disk*.0; do
+  echo "* Checking $dev ..."
+  mount -t fat $dev /a
+  if [ $? -eq 0 ]; then
+    if [ -f /a/adminkey.bin -a -f /a/adminkey.img -a -f /a/adminkey.dtb ]; then
+      echo "* Booting from $dev ..."
+      splash /env/images/Loading.png
+      bootm -o /a/adminkey.dtb /a/adminkey.img
+      echo "* Boot failed"
+      splash /env/images/Searching.png
+    fi
+    umount /a
+  fi
+done
+
+splash /env/images/OS_not_found.png
+echo
+echo -n "* No AdminKey device found, going back to default system: "
+timeout -a 5 -v key
+if [ "$?" -ne 0 ]; then while true; do sh; done; fi
+
+mw -d /dev/main_eeprom -b 0x83 0x1
+reset
+while true; do true; done
