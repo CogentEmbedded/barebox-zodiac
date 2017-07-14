@@ -19,6 +19,7 @@
 #include <init.h>
 #include <mach/bbu.h>
 #include <mach/imx6.h>
+#include <net.h>
 #include <zii/pic.h>
 
 #define RDU2_DAC1_RESET	IMX_GPIO_NR(1, 0)
@@ -230,6 +231,8 @@ static int rdu2_fixup_display(struct device_node *root, void *context)
 static int imx6_zodiac_coredevice_init(void)
 {
 	struct console_device *cdev;
+	struct device_node *np;
+	u8 mac[6];
 
 	for_each_console(cdev) {
 		if (cdev->devname &&
@@ -252,6 +255,18 @@ static int imx6_zodiac_coredevice_init(void)
 		lcd_type = 0;
 
 	of_register_fixup(rdu2_fixup_display, NULL);
+
+	np = of_find_node_by_alias(of_get_root_node(), "ethernet0");
+	if (np) {
+		pic_get_mac_address(0, mac);
+		of_eth_register_ethaddr(np, mac);
+	}
+
+	np = of_find_node_by_alias(of_get_root_node(), "ethernet1");
+	if (np) {
+		pic_get_mac_address(1, mac);
+		of_eth_register_ethaddr(np, mac);
+	}
 
 	return 0;
 }
