@@ -161,23 +161,78 @@ enum rdu2_lcd_interface_type {
 	IT_EDP
 };
 
+enum rdu2_lvds_busformat {
+	BF_NONE,
+	BF_JEIDA,
+	BF_SPWG
+};
+
 struct rdu2_lcd_info {
 	enum rdu2_lcd_interface_type type;
+	enum rdu2_lvds_busformat bus_format;
 	char *compatible;
 };
 
 static struct rdu2_lcd_info lcd_info[] = {
-	{ IT_SINGLE_LVDS, "innolux,g121i1-l01" }, /* unknown panel fallback */
-	{ IT_SINGLE_LVDS, "innolux,g121i1-l01" }, /* Innolux 10.1" */
-	{ IT_SINGLE_LVDS, "nec,nl12880bc20-05" }, /* NEC 12.1" */
-	{ IT_EDP, "" }, /* NLT 11.6" */
-	{ IT_DUAL_LVDS, "auo,g133han01" }, /* AUO 13.3" */
-	{ IT_DUAL_LVDS, "auo,g185han01" }, /* AUO 18.5" */
-	{ IT_DUAL_LVDS, "nlt,nl192108ac18-02d" }, /* NLT 15.6" */
-	{ IT_DUAL_LVDS, "auo,p320hvn03" }, /* AUO 31.5" */
+	{ IT_SINGLE_LVDS, BF_SPWG, "innolux,g121i1-l01" }, /* unknown panel fallback */
+	{ IT_SINGLE_LVDS, BF_SPWG, "innolux,g121i1-l01" }, /* Innolux 10.1" */
+	{ IT_SINGLE_LVDS, BF_SPWG, "nec,nl12880bc20-05" }, /* NEC 12.1" */
+	{ IT_EDP, BF_NONE, "" }, /* NLT 11.6" */
+	{ IT_DUAL_LVDS, BF_JEIDA, "auo,g133han01" }, /* AUO 13.3" */
+	{ IT_DUAL_LVDS, BF_SPWG, "auo,g185han01" }, /* AUO 18.5" */
+	{ IT_DUAL_LVDS, BF_SPWG, "nlt,nl192108ac18-02d" }, /* NLT 15.6" */
+	{ IT_DUAL_LVDS, BF_JEIDA, "auo,p320hvn03" }, /* AUO 31.5" */
 };
 
 static int lcd_type;
+
+static int rdu2_fixup_display_internal(void)
+{
+	struct device_node *np, *child, *tmp;
+	const char *compatible = lcd_info[lcd_type].compatible;
+	const char *bus_format = lcd_info[lcd_type].bus_format == BF_SPWG ? "spwg" : "jeida";
+
+	/* If the panel is eDP, just enable the parallel output and eDP bridge */
+	if (lcd_info[lcd_type].type == IT_EDP) {
+		np = of_find_compatible_node(NULL, NULL,
+					     "toshiba,tc358767");
+		if (!np)
+			return -ENODEV;
+		of_device_enable(np);
+
+		return 0;
+	}
+
+	/* LVDS panels need the correct timings */
+	np = of_find_node_by_name(NULL, "panel");
+	if (!np)
+		return -ENODEV;
+	of_device_enable_and_register(np);
+
+	/* Delete all mode entries, which aren't suited for the current display */
+	np = of_find_node_by_name(np, "display-timings");
+	if (!np)
+		return -ENODEV;
+	for_each_child_of_node_safe(np, tmp, child) {
+		if (!of_device_is_compatible(child, compatible))
+			of_delete_node(child);
+	}
+
+	/* enable LDB channel 0 and set correct interface mode */
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-ldb");
+	if (!np)
+		return -ENODEV;
+	of_device_enable_and_register(np);
+	if (lcd_info[lcd_type].type == IT_DUAL_LVDS)
+		of_set_property(np, "fsl,dual-channel", NULL, 0, 1);
+	np = of_find_node_by_name(np, "lvds-channel@0");
+	if (!np)
+		return -ENODEV;
+	of_device_enable(np);
+	of_property_write_string(np, "fsl,data-mapping", bus_format);
+
+	return 0;
+}
 
 static int rdu2_fixup_display(struct device_node *root, void *context)
 {
@@ -228,7 +283,11 @@ static int rdu2_fixup_display(struct device_node *root, void *context)
 	return 0;
 }
 
-static int imx6_zodiac_coredevice_init(void)
+/*
+ * This initcall needs to be executed before coredevices, so we have a chance
+ * to fix up the internal DT with the correct display information.
+ */
+static int imx6_zodiac_postmmu_init(void)
 {
 	struct console_device *cdev;
 	struct device_node *np;
@@ -254,6 +313,7 @@ static int imx6_zodiac_coredevice_init(void)
 	if (lcd_type == 0xff)
 		lcd_type = 0;
 
+	rdu2_fixup_display_internal();
 	of_register_fixup(rdu2_fixup_display, NULL);
 
 	np = of_find_node_by_alias(of_get_root_node(), "ethernet0");
@@ -270,5 +330,5 @@ static int imx6_zodiac_coredevice_init(void)
 
 	return 0;
 }
-coredevice_initcall(imx6_zodiac_coredevice_init);
+postmmu_initcall(imx6_zodiac_postmmu_init);
 #endif
