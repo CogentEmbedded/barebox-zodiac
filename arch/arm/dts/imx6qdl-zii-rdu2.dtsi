@@ -271,3 +271,7 @@
 		fsl,data-width = <24>;
 	};
 };
+
+&usbotg {
+	dr_mode = "otg";
+};
