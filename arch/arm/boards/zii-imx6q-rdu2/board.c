@@ -16,6 +16,7 @@
 #include <common.h>
 #include <envfs.h>
 #include <gpio.h>
+#include <i2c/i2c.h>
 #include <init.h>
 #include <mach/bbu.h>
 #include <mach/imx6.h>
@@ -137,9 +138,27 @@ late_initcall(rdu2_enable_front_panel_usb);
 
 static int rdu2_devices_init(void)
 {
+	struct i2c_client client;
+	u8 reg;
+
 	if (!of_machine_is_compatible("zii,imx6q-zii-rdu2") &&
 	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
 		return 0;
+
+	/* reset the ethernet switch, so we can use it for net booting */
+	client.adapter = i2c_get_adapter(1);
+	if (client.adapter) {
+		/* address of the switch watchdog microcontroller */
+		client.addr = 0x38;
+		reg = 0x78;
+		/* set switch reset time to 100ms */
+		i2c_write_reg(&client, 0x0a, &reg, 1);
+		/* reset the switch */
+		reg = 0x01;
+		i2c_write_reg(&client, 0x0d, &reg, 1);
+		/* issue dummy command to work around firmware bug */
+		i2c_read_reg(&client, 0x01, &reg, 1);
+	}
 
 	barebox_set_hostname("rdu2");
 
