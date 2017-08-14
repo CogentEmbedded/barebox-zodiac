@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# pass either static ip or dhcp to kernel based on barebox settings
+
+. /env/network/eth0
+
+# remove IP configuration from DSS
+global -r linux.bootargs.rdu_network
+
+if [ $ip = dhcp ]; then
+	global.linux.bootargs.dyn.ip="ip=dhcp"
+else
+	global.linux.bootargs.dyn.ip="ip=$ipaddr:$serverip:$gateway:$netmask::eth0:"
+fi

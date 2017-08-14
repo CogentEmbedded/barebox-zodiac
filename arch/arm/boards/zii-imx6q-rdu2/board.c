@@ -347,6 +347,9 @@ static int imx6_zodiac_postmmu_init(void)
 		of_eth_register_ethaddr(np, mac);
 	}
 
+	/* get IP configuration from DDS */
+	do_pic_get_ip();
+
 	return 0;
 }
 postmmu_initcall(imx6_zodiac_postmmu_init);

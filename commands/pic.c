@@ -17,7 +17,7 @@
 #include <errno.h>
 #include <net.h>
 #include <aiodev.h>
-
+#include <globalvar.h>
 
 // IMS_PATCH: Runtime support of 2 different environment devices (MMC/SF) ------------
 #include <environment.h>
@@ -757,6 +757,7 @@ int pic_SendRduEepromData(uint16_t pageNum, uint8_t *data)
 }
 
 /* IMS: Add U-Boot commands to Get the IP Address and Netmask and Turn on the LCD Backlight using the Microchip PIC */
+static char *rdu_networkconfig;
 void do_pic_get_ip(void)
 {
 	unsigned char data[64];
@@ -793,8 +794,9 @@ void do_pic_get_ip(void)
 	}
 
 
-	if ((data[5]==0) && (data[4]==0) && (data[3]==0) && (data[2]==0) ){
-		setenv ("ipsetup","dhcp");
+	if ((data[5]==0) && (data[4]==0) && (data[3]==0) && (data[2]==0) ) {
+		rdu_networkconfig = xstrdup("ip=dhcp");
+		globalvar_add_simple_string("linux.bootargs.rdu_network", &rdu_networkconfig);
 	}
 	else {
 		/* printf("%x\n",ip_extracted);
@@ -803,8 +805,9 @@ void do_pic_get_ip(void)
 		setenv ("ipaddr", ip_addr);
 		netmask = basprintf("%pI4", &netmask_extracted);
 		setenv ("netmask", netmask);
-		env_val = basprintf("%s:::%s::eth0:", ip_addr, netmask);
-		setenv ("ipsetup", env_val);
+		env_val = basprintf("ip=%s:::%s::eth0:", ip_addr, netmask);
+		rdu_networkconfig = xstrdup(env_val);
+		globalvar_add_simple_string("linux.bootargs.rdu_network", &rdu_networkconfig);
 		free(env_val);
 		free(netmask);
 		free(ip_addr);
