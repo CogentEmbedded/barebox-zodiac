@@ -200,3 +200,39 @@ void gu_draw_circle(struct screen *sc,
 		 }
 	}
 }
+
+void gu_fill_rounded_rectangle(struct screen *sc,
+			       int x1, int x2, int y1, int y2, int radius,
+			       u8 r, u8 g, u8 b, u8 a)
+{
+	int x, y;
+
+	x1 = max(0, x1);
+	y1 = max(0, y1);
+
+	x2 = (x2 < 0) ? sc->info->xres - 1 : x2;
+	y2 = (y2 < 0) ? sc->info->yres - 1 : y2;
+
+	if (x2 < x1)
+		swap(x1, x2);
+	if (y2 < y1)
+		swap(y1, y2);
+
+	radius = max(0, radius);
+	radius = min(radius, (x2 - x1) / 2);
+	radius = min(radius, (y2 - y1) / 2);
+
+	gu_fill_rectangle(sc, x1 + radius, y1, x2 - radius, y2, r, g, b, a);
+
+	for (x = 0, y = radius; x < radius; x++) {
+		while (y > 1 && (radius - x) * (radius - x) +
+				(radius - y) * (radius - y) < radius * radius)
+			y--;
+		gu_draw_line(sc,
+			     x1 + x, y1 + y, x1 + x, y2 - y,
+			     r, g, b, a, 0);
+		gu_draw_line(sc,
+			     x2 - x, y1 + y, x2 - x, y2 - y,
+			     r, g, b, a, 0);
+	}
+}
