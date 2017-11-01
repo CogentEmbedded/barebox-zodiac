@@ -1424,6 +1424,14 @@ config CMD_FBTEST
 	  Framebuffer test command that allows to produce a number of
 	  test patterns on a screen.
 
+config CMD_FBDRAW
+	bool
+	depends on VIDEO
+	select 2D_PRIMITIVES
+	prompt "FB draw commands"
+	help
+	  Commands to draw on framebuffer
+
 config CMD_READLINE
 	tristate
 	prompt "readline"
