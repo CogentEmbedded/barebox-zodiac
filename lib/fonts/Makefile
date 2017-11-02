@@ -2,6 +2,10 @@
 
 font-objs := fonts.o
 
+font-objs-$(CONFIG_FONT_32x53)     += font_32x53.o
+font-objs-$(CONFIG_FONT_24x40)     += font_24x40.o
+font-objs-$(CONFIG_FONT_22x36)     += font_22x36.o
+font-objs-$(CONFIG_FONT_16x26)     += font_16x26.o
 font-objs-$(CONFIG_FONT_8x16)      += font_8x16.o
 font-objs-$(CONFIG_FONT_8x8)       += font_8x8.o
 font-objs-$(CONFIG_FONT_7x14)      += font_7x14.o

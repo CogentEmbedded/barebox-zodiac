@@ -8,6 +8,18 @@ config FONTS
 
 if FONTS
 
+config FONT_32x53
+	bool "32x53 font"
+
+config FONT_24x40
+	bool "24x40 font"
+
+config FONT_22x36
+	bool "22x36 font"
+
+config FONT_16x26
+	bool "16x26 font"
+
 config FONT_8x16
 	bool "VGA 8x16 font"
 	help
