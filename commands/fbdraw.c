@@ -56,3 +56,69 @@ BAREBOX_CMD_START(fb_draw_box)
 	BAREBOX_CMD_GROUP(CMD_GRP_CONSOLE)
 	BAREBOX_CMD_HELP(cmd_fb_draw_box_help)
 BAREBOX_CMD_END
+
+
+#ifdef CONFIG_FONTS
+
+static int do_fb_draw_text(int argc, char *argv[])
+{
+	struct screen *sc;
+	void *buf;
+	int x, y, h;
+	u32 color;
+	u32 bcolor;
+	const struct font_desc *font;
+	char *fbdev = "/dev/fb0";
+
+	if (argc != 7)
+		return COMMAND_ERROR_USAGE;
+
+	color = simple_strtol(argv[1], NULL, 16);
+	bcolor = simple_strtol(argv[2], NULL, 16);
+	x = simple_strtol(argv[3], NULL, 10);
+	y = simple_strtol(argv[4], NULL, 10);
+	h = simple_strtol(argv[6], NULL, 10);
+	font = find_font_height(h);
+	if (!font) {
+		printf("No font for height %d\n", h);
+		list_fonts();
+		return -EINVAL;
+	}
+
+	sc = fb_open(fbdev);
+	if (IS_ERR(sc)) {
+		perror("fd_open");
+		return PTR_ERR(sc);
+	}
+
+	buf = gui_screen_render_buffer(sc);
+
+	gu_draw_text(sc->info, buf, font, x, y,
+			argv[5], COLORS(color), COLORS(bcolor));
+
+	gu_screen_blit(sc);
+
+	fb_close(sc);
+
+	return 0;
+}
+
+BAREBOX_CMD_HELP_START(fb_draw_text)
+BAREBOX_CMD_HELP_TEXT("draw text")
+BAREBOX_CMD_HELP_TEXT("")
+BAREBOX_CMD_HELP_OPT ("fcolor", "text color, hex rrggbb")
+BAREBOX_CMD_HELP_OPT ("bcolor", "background color, hex rrggbb")
+BAREBOX_CMD_HELP_OPT ("x y", "left top corner position")
+BAREBOX_CMD_HELP_OPT ("str", "text to draw")
+BAREBOX_CMD_HELP_OPT ("h", "font size")
+BAREBOX_CMD_HELP_END
+
+BAREBOX_CMD_START(fb_draw_text)
+	.cmd		= do_fb_draw_text,
+	BAREBOX_CMD_DESC("draw text")
+	BAREBOX_CMD_OPTS("fcolor bcolor x y str h")
+	BAREBOX_CMD_GROUP(CMD_GRP_CONSOLE)
+	BAREBOX_CMD_HELP(cmd_fb_draw_text_help)
+BAREBOX_CMD_END
+
+#endif

@@ -4,7 +4,6 @@
 
 config FONTS
 	bool "Select compiled-in fonts"
-	depends on FRAMEBUFFER_CONSOLE
 
 if FONTS
 

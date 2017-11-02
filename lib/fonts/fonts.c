@@ -17,6 +17,7 @@
 #include <linux/types.h>
 #include <linux/string.h>
 #include <linux/font.h>
+#include <stdio.h>
 
 static char *font_names;
 
@@ -79,6 +80,20 @@ const struct font_desc *find_font_height(int height)
 	}
 
 	return NULL;
+}
+
+void list_fonts(void)
+{
+	struct font_desc *f;
+
+	if (list_empty(&fonts_list))
+		printf("No fonts available\n");
+	else {
+		printf("Available fonts:");
+		list_for_each_entry(f, &fonts_list, list)
+			printf(" %dx%d", f->width, f->height);
+		printf("\n");
+	}
 }
 
 struct param_d *add_param_font(struct device_d *dev,
