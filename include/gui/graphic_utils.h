@@ -10,6 +10,7 @@
 #include <fb.h>
 #include <gui/image.h>
 #include <gui/gui.h>
+#include <linux/font.h>
 
 u32 gu_hex_to_pixel(struct fb_info *info, u32 color);
 u32 gu_rgb_to_pixel(struct fb_info *info, u8 r, u8 g, u8 b, u8 t);
@@ -27,6 +28,13 @@ void gu_invert_area(struct fb_info *info, void *buf, int startx, int starty, int
 		int height);
 void gu_screen_blit_area(struct screen *sc, int startx, int starty, int width,
 		int height);
+#ifdef CONFIG_FONTS
+void gu_draw_text(struct fb_info *info, void *buf,
+		  const struct font_desc *font,
+		  int x, int y, char *text,
+		  u8 fr, u8 fg, u8 fb, u8 fa,
+		  u8 br, u8 bg, u8 bb, u8 ba);
+#endif
 
 void gu_fill_rectangle(struct screen *sc,
 		       int x1, int y1, int x2, int y2,

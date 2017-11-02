@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <fs.h>
 #include <malloc.h>
+#include <linux/font.h>
+#include <linux/unaligned/access_ok.h>
 
 /**
  * gu_get_pixel_rgb - convert a rgb triplet color to fb format
@@ -361,3 +363,69 @@ void gu_fill_rectangle(struct screen *sc,
 		}
 	}
 }
+
+#ifdef CONFIG_FONTS
+static void gu_draw_char(struct fb_info *info, void *buf,
+			 const struct font_desc *font,
+			 int c, int x, int y,
+			 u8 fr, u8 fg, u8 fb, u8 fa,
+			 u8 br, u8 bg, u8 bb, u8 ba)
+{
+	const u8 *font_data = font->data + find_font_index(font, c);
+	int bpp = info->bits_per_pixel >> 3;
+	void *adr;
+	int i, j;
+	u8 d, m;
+	
+	for (i = 0; i < font->height; i++) {
+
+		adr = buf + info->line_length * (y + i) + x * bpp;
+
+		for (j = 0, m = 0; j < font->width; j++) {
+			if (!m) {
+				d = *font_data++;
+				m = 0x80;
+			}
+
+			if (d & m)
+				gu_set_rgba_pixel(info, adr, fr, fg, fb, fa);
+			else
+				gu_set_rgba_pixel(info, adr, br, bg, bb, ba);
+
+			adr += bpp;
+			m >>= 1;
+		}
+	}
+}
+
+void gu_draw_text(struct fb_info *info, void *buf,
+		  const struct font_desc *font,
+		  int x, int y, char *text,
+		  u8 fr, u8 fg, u8 fb, u8 fa,
+		  u8 br, u8 bg, u8 bb, u8 ba)
+{
+	int xp, yp;
+
+	xp = x;
+	yp = y;
+
+	while (*text != 0) {
+		if (*text == '\n' ) {
+			xp = info->xres;
+			text++;
+			continue;
+		}
+
+		if (xp + font->width > info->xres - 1) {
+			xp = x;
+			yp += font->height;
+		}
+
+		gu_draw_char(info, buf, font, *text, xp, yp,
+				fr, fg, fb, fa, br, bg, bb, ba);
+
+		xp += font->width;
+		text++;
+	}
+}
+#endif
