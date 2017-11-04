@@ -171,6 +171,10 @@ static int ehci_reset(struct ehci_priv *ehci)
 		goto out;
 	}
 
+	tmp = ehci_readl(&ehci->hcor->or_portsc[0]);
+	tmp |= (1 << 24);
+	ehci_writel(&ehci->hcor->or_portsc[0], tmp);
+
 	if (ehci_is_TDI()) {
 		reg_ptr = (uint32_t *)((u8 *)ehci->hcor + USBMODE);
 		tmp = ehci_readl(reg_ptr);
