@@ -1,0 +1,85 @@
+#!/bin/sh
+
+echo
+echo "*** AdminKey barebox running ***"
+echo
+
+echo -n "* Hit any key to stop autoboot: "
+timeout -a 1 -v key
+if [ "$?" -ne 0 ]; then sh; fi
+
+echo "* Disabling watchdog ..."
+pic_setwdt 0 0
+
+echo "* Configuring display ..."
+
+if [ "${global.spinor.video}" = "mxcdi0fb:RGB24,Toshiba89" ]; then
+  fb0.mode_name=toshiba89
+  fb0.enable=1
+elif [ "${global.spinor.video}" = "mxcdi0fb:RGB24,CHIMEI15" ]; then
+  fb0.mode_name=chimei15
+  fb0.enable=1
+else
+  fb0.enable=0
+fi
+
+pic_enlcd
+sleep 1
+if [ "${fb0.enable}" -eq 1 ]; then
+  splash /env/images/Searching.png
+  pic_setlcd 1 50 0
+  global linux.bootargs.fbcon="console=tty0"
+  of_display_timings -S /display@di0/display-timings/${fb0.mode_name}
+fi
+
+if [ "${global.spinor.mac}" != "" ]; then
+  echo "* Configured MAC address: ${global.spinor.mac}"
+  eth0.ethaddr=${global.spinor.mac}
+fi
+
+if [ "${global.pic.ipaddr}" != "" ]; then
+  echo "* Configured IP address: ${global.pic.ipaddr}"
+  global linux.bootargs.ipddr="pic_ipaddr=${global.pic.ipaddr}"
+fi
+
+if [ "${global.pic.netmask}" != "" ]; then
+  echo "* Configured netmask: ${global.pic.netmask}"
+  global linux.bootargs.netmask="pic_netmask=${global.pic.netmask}"
+fi
+
+echo "* Detecting USB devices ..."
+pic_enusb
+usb
+
+mkdir /a
+
+for dev in /dev/disk*.0; do
+  echo "* Checking $dev ..."
+  mount -t fat $dev /a
+  if [ $? -eq 0 ]; then
+    if [ -f /a/adminkey.bin -a -f /a/adminkey.img -a -f /a/adminkey.dtb ]; then
+      echo "* Booting from $dev ..."
+      if [ "${fb0.enable}" -eq 1 ]; then
+        splash /env/images/Loading.png
+      fi
+      bootm -o /a/adminkey.dtb /a/adminkey.img
+      echo "* Boot failed"
+      if [ "${fb0.enable}" -eq 1 ]; then
+        splash /env/images/Searching.png
+      fi
+    fi
+    umount /a
+  fi
+done
+
+if [ "${fb0.enable}" -eq 1 ]; then
+  splash /env/images/OS_not_found.png
+fi
+echo
+echo -n "* No AdminKey device found, going back to default system: "
+timeout -a 5 -v key
+if [ "$?" -ne 0 ]; then while true; do sh; done; fi
+
+pic_setboot 1
+pic_reset
+while true; do true; done
