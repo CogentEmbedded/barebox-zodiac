@@ -226,6 +226,8 @@ static void import_spinor_vars(void)
 	free(buf);
 }
 
+extern void pic_import_ip(void);
+
 static int imx51_zodiac_lateinit(void)
 {
 	struct console_device *cdev;
@@ -239,6 +241,7 @@ static int imx51_zodiac_lateinit(void)
 	}
 
 	import_spinor_vars();
+	pic_import_ip();
 
 	return 0;
 }
