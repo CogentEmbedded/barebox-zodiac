@@ -238,6 +238,14 @@ config CMD_VERSION
 
 	  barebox 2014.05.0-00142-gb289373 #177 Mon May 12 20:35:55 CEST 2014
 
+config CMD_VERSION_OUTPUT_TO_FRAMEBUFFER
+       bool
+       depends on CMD_VERSION
+       prompt "support displaying version via framebuffer"
+       help
+         Selecting this option will enable version command to output
+         version information onto display backed by a frambuffer
+
 config CMD_MMC_EXTCSD
 	tristate
 	prompt "read/write eMMC ext. CSD register"
