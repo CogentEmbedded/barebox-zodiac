@@ -146,9 +146,22 @@ static int rdu2_devices_init(void)
 	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
 		return 0;
 
-	/* reset the ethernet switch, so we can use it for net booting */
 	client.adapter = i2c_get_adapter(1);
 	if (client.adapter) {
+		/*
+		 * Reset PMIC SW1AB and SW1C rails to 1.375V. If an event
+		 * caused only the i.MX6 SoC reset, the PMIC might still be
+		 * stuck on the low voltage for the slow operating point.
+		 */
+		client.addr = 0x08; /* PMIC i2c address */
+		reg = 0x2b; /* 1.375V, valid for both rails */
+		i2c_write_reg(&client, 0x20, &reg, 1);
+		i2c_write_reg(&client, 0x2e, &reg, 1);
+
+		/*
+		 * Reset the ethernet switch, so we can use it for net booting
+		 */
+
 		/* address of the switch watchdog microcontroller */
 		client.addr = 0x38;
 		reg = 0x78;
