@@ -11,6 +11,8 @@
 #include <gui/image.h>
 #include <gui/gui.h>
 
+#ifdef CONFIG_IMAGE_RENDERER
+
 u32 gu_hex_to_pixel(struct fb_info *info, u32 color);
 u32 gu_rgb_to_pixel(struct fb_info *info, u8 r, u8 g, u8 b, u8 t);
 void gu_rgba_blend(struct fb_info *info, struct image *img, void* dest, int height,
@@ -31,4 +33,49 @@ void gu_screen_blit_area(struct screen *sc, int startx, int starty, int width,
 void gu_fill_rectangle(struct screen *sc,
 		       int x1, int y1, int x2, int y2,
 		       u8 r, u8 g, u8 b, u8 a);
+#else
+
+static inline u32 gu_hex_to_pixel(struct fb_info *info, u32 color)
+{
+	return 0;
+}
+static inline u32 gu_rgb_to_pixel(struct fb_info *info, u8 r,
+				  u8 g, u8 b, u8 t)
+{
+	return 0;
+}
+static inline void gu_rgba_blend(struct fb_info *info, struct image *img,
+				 void* dest,int height,
+				 int width, int startx,
+				 int starty, bool is_rgba) {}
+static inline void gu_set_pixel(struct fb_info *info, void *adr, u32 px) {}
+static inline void gu_set_rgb_pixel(struct fb_info *info, void *adr,
+				    u8 r, u8 g, u8 b) {}
+static inline void gu_set_rgba_pixel(struct fb_info *info, void *adr,
+				     u8 r, u8 g, u8 b, u8 a) {}
+static inline void gu_memset_pixel(struct fb_info *info, void* buf,
+				   u32 color, size_t size) {}
+static inline struct screen *fb_create_screen(struct fb_info *info)
+{
+	return ERR_PTR(-ENOTSUPP);
+}
+
+static inline struct screen *fb_open(const char *fbdev)
+{
+	return ERR_PTR(-ENOTSUPP);
+}
+
+static inline void fb_close(struct screen *sc) {}
+static inline void gu_screen_blit(struct screen *sc) {}
+static inline void gu_invert_area(struct fb_info *info, void *buf, int startx,
+				  int starty, int width, int height) {}
+static inline void gu_screen_blit_area(struct screen *sc, int startx,
+				       int starty, int width,
+				       int height) {}
+static inline void gu_fill_rectangle(struct screen *sc, int x1, int y1,
+				     int x2, int y2, u8 r, u8 g, u8 b, u8 a) {}
+
+#endif
+
+
 #endif /* __GRAPHIC_UTILS_H__ */
