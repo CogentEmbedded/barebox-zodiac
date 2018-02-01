@@ -30,6 +30,8 @@ struct font_desc {
 /* Max. length for the name of a predefined font */
 #define MAX_FONT_NAME	32
 
+#ifdef CONFIG_FONTS
+
 extern int find_font_index(const struct font_desc *font, int ch);
 extern const struct font_desc *find_font_enum(int n);
 extern struct param_d *add_param_font(struct device_d *dev,
@@ -38,5 +40,33 @@ extern struct param_d *add_param_font(struct device_d *dev,
 		int *value, void *priv);
 
 int font_register(struct font_desc *font);
+
+#else
+
+static inline int find_font_index(const struct font_desc *font, int ch)
+{
+	return -ENOTSUPP;
+}
+
+static inline const struct font_desc *find_font_enum(int n)
+{
+	return NULL;
+}
+
+static inline struct param_d *
+add_param_font(struct device_d *dev,
+	       int (*set)(struct param_d *p, void *priv),
+	       int (*get)(struct param_d *p, void *priv),
+	       int *value, void *priv)
+{
+	return NULL;
+}
+
+static inline int font_register(struct font_desc *font)
+{
+	return -ENOTSUPP;
+}
+
+#endif
 
 #endif /* _VIDEO_FONT_H */
