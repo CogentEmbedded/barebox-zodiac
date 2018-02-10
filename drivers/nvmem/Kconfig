@@ -15,4 +15,11 @@ config NVMEM_SNVS_LPGPR
 	help
 	  If you say yes here you get NVMEM support for the Freescale SNVS
 	  Low Power Generic Purpose Register (LPGPR).
+
+config RAVE_SP_EEPROM
+	tristate "Rave SP EEPROM Support"
+	depends on RAVE_SP_CORE
+	help
+	  Say y here to enable Rave SP EEPROM support.
+
 endif
