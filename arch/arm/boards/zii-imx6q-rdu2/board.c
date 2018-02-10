@@ -20,6 +20,8 @@
 #include <init.h>
 #include <mach/bbu.h>
 #include <mach/imx6.h>
+#include <net.h>
+#include <linux/nvmem-consumer.h>
 
 #define RDU2_DAC1_RESET	IMX_GPIO_NR(1, 0)
 #define RDU2_DAC2_RESET	IMX_GPIO_NR(1, 2)
@@ -170,3 +172,89 @@ static int rdu2_devices_init(void)
 	return 0;
 }
 device_initcall(rdu2_devices_init);
+
+static void *
+rdu2_nvmem_cell_read(struct device_node *np, const char *cell_name, int bytes)
+{
+	struct nvmem_cell *cell;
+	size_t len;
+	void *value;
+
+	cell = of_nvmem_cell_get(np, cell_name);
+	if (IS_ERR(cell)) {
+		return cell;
+	}
+
+	value = nvmem_cell_read(cell, &len);
+	if (len != bytes) {
+		kfree(value);
+		return ERR_PTR(-EINVAL);
+	}
+
+	return value;
+}
+
+/*
+ * FIXME: Needs to be made into convenience function and share with
+ * OCOTP driver
+ */
+static void memreverse(void *dest, const void *src, size_t n)
+{
+	char *destp = dest;
+	const char *srcp = src + n - 1;
+
+	while(n--)
+		*destp++ = *srcp--;
+}
+
+static int rdu2_eth_register_ethaddr(struct device_node *np)
+{
+	u8 *__mac, mac[6];
+
+	__mac = rdu2_nvmem_cell_read(np, "mac-address", sizeof(mac));
+	if (IS_ERR(__mac)) {
+		pr_err("Failed to fread MAC address for ethernet0\n");
+		return PTR_ERR(__mac);
+	}
+
+	memreverse(mac, __mac, sizeof(mac));
+	kfree(__mac);
+	of_eth_register_ethaddr(np, mac);
+
+	return 0;
+}
+
+static int rdu2_ethernet0_init(void)
+{
+	struct device_node *np, *root;
+
+	if (!of_machine_is_compatible("zii,imx6q-zii-rdu2") &&
+	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
+		return 0;
+
+	root = of_get_root_node();
+	np   = of_find_node_by_alias(root, "ethernet0");
+	if (!np)
+		return -ENODEV;
+
+	return rdu2_eth_register_ethaddr(np);
+}
+late_initcall(rdu2_ethernet0_init);
+
+static int rdu2_ethernet1_init(void)
+{
+	struct device_node *np, *root;
+
+	if (!of_machine_is_compatible("zii,imx6q-zii-rdu2") &&
+	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
+		return 0;
+
+	root = of_get_root_node();
+	np   = of_find_node_by_alias(root, "ethernet1");
+	if (!np)
+		return -ENODEV;
+
+	return rdu2_eth_register_ethaddr(np);
+}
+late_initcall(rdu2_ethernet1_init);
+
