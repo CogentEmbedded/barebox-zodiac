@@ -719,6 +719,12 @@ config CONSOLE_NONE
 
 endchoice
 
+config SERIAL_DEV_BUS
+	bool "Serial device bus"
+	depends on CONSOLE_FULL
+	help
+	  Core support for devices connected via a serial port.
+
 choice
 	prompt "Console activation strategy"
 	depends on CONSOLE_FULL
