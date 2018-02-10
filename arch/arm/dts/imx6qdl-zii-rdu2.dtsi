@@ -52,6 +52,8 @@
 	aliases {
 		ethernet0 = &fec;
 		ethernet1 = &i210;
+		main-eeprom = &main_eeprom;
+		dds-eeprom = &dds_eeprom;
 	};
 };
 
@@ -59,6 +61,21 @@
 	rave-sp {
 		compatible = "zii,rave-sp-rdu2";
 		current-speed = <1000000>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		dds_eeprom: eeprom@a3 {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xa3 0x4000>;
+		};
+
+		main_eeprom: eeprom@a4 {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xa4 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+		};
 
 		watchdog {
 			compatible = "zii,rave-sp-watchdog";
