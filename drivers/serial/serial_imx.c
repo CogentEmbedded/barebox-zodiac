@@ -274,9 +274,13 @@ err_free:
 static void imx_serial_remove(struct device_d *dev)
 {
 	struct imx_serial_priv *priv = dev->priv;
+	int ret;
 
 	imx_serial_flush(&priv->cdev);
-	console_unregister(&priv->cdev);
+	ret = console_unregister(&priv->cdev);
+	if (ret < 0)
+		return;
+
 	free(priv);
 }
 

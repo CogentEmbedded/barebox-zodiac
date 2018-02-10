@@ -205,9 +205,13 @@ static int s3c_serial_probe(struct device_d *dev)
 static void s3c_serial_remove(struct device_d *dev)
 {
 	struct s3c_uart *priv= dev->priv;
+	int ret;
 
 	s3c_serial_flush(&priv->cdev);
-	console_unregister(&priv->cdev);
+	ret = console_unregister(&priv->cdev);
+	if (ret < 0)
+		return;
+
 	free(priv);
 }
 

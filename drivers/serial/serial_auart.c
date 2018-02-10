@@ -224,9 +224,13 @@ static int auart_serial_probe(struct device_d *dev)
 static void auart_serial_remove(struct device_d *dev)
 {
 	struct auart_priv *priv = dev->priv;
+	int ret;
 
 	auart_serial_flush(&priv->cdev);
-	console_unregister(&priv->cdev);
+	ret = console_unregister(&priv->cdev);
+	if (ret < 0)
+		return;
+
 	free(priv);
 }
 

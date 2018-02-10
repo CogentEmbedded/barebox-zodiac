@@ -95,7 +95,7 @@ console_is_serdev_node(struct console_device *cdev)
 }
 
 int console_register(struct console_device *cdev);
-int console_unregister(struct console_device *cdev);
+int __must_check console_unregister(struct console_device *cdev);
 
 struct console_device *console_get_by_dev(struct device_d *dev);
 struct console_device *console_get_by_name(const char *name);

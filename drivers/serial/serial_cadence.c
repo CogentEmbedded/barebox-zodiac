@@ -270,8 +270,12 @@ err_free:
 static void cadence_serial_remove(struct device_d *dev)
 {
 	struct cadence_serial_priv *priv = dev->priv;
+	int ret;
 
-	console_unregister(&priv->cdev);
+	ret = console_unregister(&priv->cdev);
+	if (ret < 0)
+		return;
+
 	free(priv);
 }
 

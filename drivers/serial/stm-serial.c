@@ -185,9 +185,13 @@ static int stm_serial_probe(struct device_d *dev)
 static void stm_serial_remove(struct device_d *dev)
 {
 	struct stm_priv *priv = dev->priv;
+	int ret;
 
 	stm_serial_flush(&priv->cdev);
-	console_unregister(&priv->cdev);
+	ret = console_unregister(&priv->cdev);
+	if (ret < 0)
+		return;
+
 	free(priv);
 }
 

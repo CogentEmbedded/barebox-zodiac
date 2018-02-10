@@ -194,9 +194,13 @@ err_free:
 static void lpuart_serial_remove(struct device_d *dev)
 {
 	struct lpuart *lpuart = dev->priv;
+	int ret;
 
 	lpuart_serial_flush(&lpuart->cdev);
-	console_unregister(&lpuart->cdev);
+	ret = console_unregister(&lpuart->cdev);
+	if (ret < 0)
+		return;
+
 	release_region(lpuart->io);
 	clk_put(lpuart->clk);
 

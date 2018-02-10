@@ -184,9 +184,13 @@ out_err:
 static void clps711x_remove(struct device_d *dev)
 {
 	struct clps711x_uart *s = dev->priv;
+	int ret;
 
 	clps711x_flush(&s->cdev);
-	console_unregister(&s->cdev);
+	ret = console_unregister(&s->cdev);
+	if (ret < 0)
+		return;
+
 	free(s);
 }
 

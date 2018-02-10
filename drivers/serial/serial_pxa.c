@@ -188,8 +188,12 @@ static int pxa_serial_probe(struct device_d *dev)
 static void pxa_serial_remove(struct device_d *dev)
 {
 	struct pxa_serial_priv *priv = dev->priv;
+	int ret;
 
-	console_unregister(&priv->cdev);
+	ret = console_unregister(&priv->cdev);
+	if (ret < 0)
+		return;
+
 	free(priv);
 }
 
