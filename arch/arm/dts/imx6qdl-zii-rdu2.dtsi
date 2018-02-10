@@ -59,6 +59,10 @@
 	rave-sp {
 		compatible = "zii,rave-sp-rdu2";
 		current-speed = <1000000>;
+
+		watchdog {
+			compatible = "zii,rave-sp-watchdog";
+		};
 	};
 };
 
