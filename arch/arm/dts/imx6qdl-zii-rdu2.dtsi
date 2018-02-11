@@ -80,6 +80,12 @@
 		watchdog {
 			compatible = "zii,rave-sp-watchdog";
 		};
+
+		parameters {
+			compatible = "zii,rave-sp-parameters";
+			#address-cells = <1>;
+			#size-cells = <1>;
+		};
 	};
 };
 
