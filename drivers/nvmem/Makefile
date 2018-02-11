@@ -12,3 +12,6 @@ nvmem_snvs_lpgpr-y		:= snvs_lpgpr.o
 obj-$(CONFIG_RAVE_SP_EEPROM)	+= nvmem-rave-sp-eeprom.o
 nvmem-rave-sp-eeprom-y		:= rave-sp-eeprom.o
 
+obj-$(CONFIG_RAVE_SP_CORE)	+= nvmem-rave-sp-parameters.o
+nvmem-rave-sp-parameters-y	:= rave-sp-parameters.o
+
