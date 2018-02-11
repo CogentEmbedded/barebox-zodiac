@@ -21,6 +21,7 @@
 #include <mach/bbu.h>
 #include <mach/imx6.h>
 #include <net.h>
+#include <globalvar.h>
 #include <linux/nvmem-consumer.h>
 
 #define RDU2_DAC1_RESET	IMX_GPIO_NR(1, 0)
@@ -213,7 +214,7 @@ static int rdu2_eth_register_ethaddr(struct device_node *np)
 
 	__mac = rdu2_nvmem_cell_read(np, "mac-address", sizeof(mac));
 	if (IS_ERR(__mac)) {
-		pr_err("Failed to fread MAC address for ethernet0\n");
+		pr_err("Failed to read MAC address for ethernet\n");
 		return PTR_ERR(__mac);
 	}
 
@@ -226,31 +227,65 @@ static int rdu2_eth_register_ethaddr(struct device_node *np)
 
 static int rdu2_ethernet0_init(void)
 {
-	struct device_node *np, *root;
+	static char *rdu_networkconfig;
+	struct device_node *np;
+	IPaddr_t ip_address, netmask;
+	struct {
+		__le32 ip_address;
+		__le32 netmask;
+	} *configuration;
+	int ret;
 
 	if (!of_machine_is_compatible("zii,imx6q-zii-rdu2") &&
 	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
 		return 0;
 
-	root = of_get_root_node();
-	np   = of_find_node_by_alias(root, "ethernet0");
+	np = of_find_node_by_alias(of_get_root_node(), "ethernet0");
 	if (!np)
 		return -ENODEV;
 
-	return rdu2_eth_register_ethaddr(np);
+	ret = rdu2_eth_register_ethaddr(np);
+	if (ret)
+		pr_warn("%s: Failed to register MAC address\n",
+			np->name);
+
+	configuration = rdu2_nvmem_cell_read(np, "ip-address",
+					     sizeof(*configuration));
+	if (IS_ERR(configuration)) {
+		pr_err("%s: Failed to read IP address\n", np->name);
+		return PTR_ERR(configuration);
+	}
+
+	ip_address = le32_to_cpu(configuration->ip_address);
+	netmask    = le32_to_cpu(configuration->netmask);
+	free(configuration);
+
+	pr_info("%s: %pI4/%pI4\n", np->name, &ip_address, &netmask);
+
+	if (ip_address) {
+		setenv_ip("ipaddr",  ip_address);
+		setenv_ip("netmask", netmask);
+		rdu_networkconfig = basprintf("ip=%pI4:::%pI4::eth0:",
+					      &ip_address, &netmask);
+	} else {
+		rdu_networkconfig = xstrdup("ip=dhcp");
+	}
+
+	globalvar_add_simple_string("linux.bootargs.rdu_network", &rdu_networkconfig);
+
+	return 0;
 }
 late_initcall(rdu2_ethernet0_init);
 
 static int rdu2_ethernet1_init(void)
 {
-	struct device_node *np, *root;
+	struct device_node *np;
 
 	if (!of_machine_is_compatible("zii,imx6q-zii-rdu2") &&
 	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
 		return 0;
 
-	root = of_get_root_node();
-	np   = of_find_node_by_alias(root, "ethernet1");
+	np = of_find_node_by_alias(of_get_root_node(), "ethernet1");
 	if (!np)
 		return -ENODEV;
 

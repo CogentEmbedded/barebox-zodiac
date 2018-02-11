@@ -93,6 +93,10 @@
 			compatible = "zii,rave-sp-parameters";
 			#address-cells = <1>;
 			#size-cells = <1>;
+
+			ip_address0: ip-address@0 {
+				reg = <0 8>;
+			};
 		};
 
 		sensor-temperature {
@@ -190,8 +194,8 @@
 };
 
 &fec {
-	nvmem-cells = <&mac_address_0>;
-	nvmem-cell-names = "mac-address";
+	nvmem-cells = <&mac_address_0 &ip_address0>;
+	nvmem-cell-names = "mac-address", "ip-address";
 };
 
 &i2c2 {
