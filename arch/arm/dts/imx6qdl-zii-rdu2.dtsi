@@ -86,6 +86,77 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 		};
+
+		sensor-temperature {
+			compatible = "zii,rave-sp-sensor-temperature";
+			status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rdu {
+				reg = <0>;
+			};
+
+			deb {
+				reg = <1>;
+			};
+		};
+
+		sensor-voltage {
+			compatible = "zii,rave-sp-sensor-voltage";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rmb-3v3-pmic {
+				reg = <0>;
+			};
+
+			rmb-3v3-mcu {
+				reg = <1>;
+			};
+
+			rmb-5v-main {
+				reg = <2>;
+			};
+
+			rmb-12v-main {
+				reg = <3>;
+			};
+
+			rmb-28v-fil {
+				reg = <4>;
+			};
+
+			rmb-28v-hotswap {
+				reg = <5>;
+			};
+
+			deb-1v8 {
+				reg = <6>;
+			};
+
+			deb-3v3 {
+				reg = <7>;
+			};
+
+			deb-28v-deb {
+				reg = <8>;
+			};
+
+			deb-28v-rdu {
+				reg = <9>;
+			};
+		};
+
+		sensor-current {
+			compatible = "zii,rave-sp-sensor-current";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rmb-28v-hotswap {
+				reg = <0>;
+			};
+		};
 	};
 };
 
