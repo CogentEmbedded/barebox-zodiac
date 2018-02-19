@@ -28,4 +28,10 @@ config MC13XXX_ADC
 	help
 	  Support for MC13783, MC13892, MC34708 ADC
 
+config RAVE_SP_AIODEV
+	tristate "Driver for sensors present in RAVE SP"
+	depends on RAVE_SP_CORE
+	help
+	  Support for accessing sensor information provided by RAVE SP
+	  devices
 endif
