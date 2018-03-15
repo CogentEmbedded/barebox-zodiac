@@ -1,4 +1,5 @@
 #!/bin/sh
 
 splash /env/logo/rave.png
+version -d /dev/fb0 -p lower-left
 fb0.enable=1
