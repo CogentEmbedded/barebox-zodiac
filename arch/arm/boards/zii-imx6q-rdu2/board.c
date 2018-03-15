@@ -383,6 +383,41 @@ static int rdu2_fixup_display_internal(const struct rdu2_lcd_info *lcd_info)
 	return 0;
 }
 
+static int rdu2_fixup_dsa(struct device_node *root, void *context)
+{
+	struct device_node *switch_np, *np;
+	phandle i210_handle;
+
+	/*
+	 * The 12.1" unit has no FEC connection, so we need to rewrite the i210
+	 * port into the CPU port and delete the FEC port, which is part of the
+	 * common setup.
+	 */
+	pr_info("Rewriting i210 switch port into CPU port\n");
+
+	switch_np = of_find_compatible_node(root, NULL, "marvell,mv88e6085");
+	if (!switch_np)
+		return -ENODEV;
+
+	np = of_find_node_by_name(switch_np, "port@2");
+	if (!np)
+		return -ENODEV;
+	of_delete_node(np);
+
+	np = of_find_node_by_name(root, "i210@0");
+	if (!np)
+		return -ENODEV;
+	i210_handle = of_node_create_phandle(np);
+
+	np = of_find_node_by_name(switch_np, "port@0");
+	if (!np)
+		return -ENODEV;
+	of_property_write_u32(np, "ethernet", i210_handle);
+	of_set_property(np, "label", "cpu", strlen("cpu") + 1, 1);
+
+	return 0;
+}
+
 static int rdu2_fixup_display(struct device_node *root, void *context)
 {
 	struct device_node *np;
@@ -466,12 +501,16 @@ static int rdu2_lcd_panel_init(void)
 		lcd_info = &rdu2_supported_lcd_infos[*lcd_type];
 	}
 
-	if (!IS_ERR(lcd_type))
-		kfree(lcd_type);
-
 	if (rdu2_fixup_display_internal(lcd_info) < 0)
 		pr_warn("%s: Failed to fixup internal devicetree\n",
 			np->name);
+
+	if (*lcd_type == 2)
+		of_register_fixup(rdu2_fixup_dsa, NULL);
+
+	if (!IS_ERR(lcd_type))
+		kfree(lcd_type);
+
 	return of_register_fixup(rdu2_fixup_display, lcd_info);
 }
 postmmu_initcall(rdu2_lcd_panel_init);
