@@ -87,6 +87,7 @@ enum proto_state {
  * @total_SOH: number of SOH frames received (128 bytes chunks)
  * @total_STX: number of STX frames received (1024 bytes chunks)
  * @total_CAN: nubmer of CAN frames received (cancel frames)
+ * @read_block_timeout: Timeout to wait before NACKing a block
  */
 struct xyz_ctxt {
 	struct console_device *cdev;
@@ -100,6 +101,7 @@ struct xyz_ctxt {
 	int nb_received;
 	int next_blk;
 	int total_SOH, total_STX, total_CAN, total_retries;
+	uint64_t read_block_timeout;
 };
 
 /**
@@ -418,6 +420,19 @@ static struct xyz_ctxt *xymodem_open(struct console_device *cdev,
 	proto->mode = proto_mode;
 	proto->cdev = cdev;
 	proto->crc_mode = CRC_CRC16;
+	/*
+	 * Set read block timeout to 10 times the amount of time
+	 * needed to receive a block-size bytes at a given baud-rate,
+	 * but no less than 50ms.
+	 *
+	 * 50ms is just a setting arrived experimentally and might not
+	 * be optimal on every setup
+	 */
+	proto->read_block_timeout =
+		max(DIV_ROUND_UP(10 * sizeof(struct xy_block) * SECOND,
+				 console_get_baudrate(cdev)),
+		    50 * MSECOND);
+
 
 	if (is_xmodem(proto)) {
 		proto->fd = xmodem_fd;
@@ -463,7 +478,8 @@ static int xymodem_handle(struct xyz_ctxt *proto)
 			xy_putc(proto->cdev, invite);
 			/* Fall through */
 		case PROTO_STATE_RECEIVE_BODY:
-			rc = xy_read_block(proto, &blk, 3 * SECOND);
+			rc = xy_read_block(proto, &blk,
+					   proto->read_block_timeout);
 			if (rc > 0) {
 				rc = check_blk_seq(proto, &blk, rc);
 				proto->state = PROTO_STATE_RECEIVE_BODY;
