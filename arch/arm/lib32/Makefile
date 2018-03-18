@@ -15,6 +15,7 @@ obj-y	+= lib1funcs.o
 obj-y	+= ashrdi3.o
 obj-y	+= ashldi3.o
 obj-y	+= lshrdi3.o
+obj-y	+= uldivmod.o
 obj-y	+= runtime-offset.o
 pbl-y	+= runtime-offset.o
 obj-$(CONFIG_ARM_OPTIMZED_STRING_FUNCTIONS)	+= memcpy.o
