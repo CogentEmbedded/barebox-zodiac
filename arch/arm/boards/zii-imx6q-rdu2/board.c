@@ -468,6 +468,28 @@ static int rdu2_fixup_display(struct device_node *root, void *context)
 	return 0;
 }
 
+static int rdu2_fixup_egalax_ts(struct device_node *root, void *context)
+{
+	struct device_node *np;
+
+	/*
+	 * The 32" unit has a EETI eGalax touchscreen instead of the
+	 * Synaptics RMI4 found on other units.
+	 */
+	pr_info("Enabling eGalax touchscreen instead of RMI4\n");
+
+	np = of_find_compatible_node(root, NULL, "syna,rmi4-i2c");
+	if (!np)
+		return -ENODEV;
+	of_device_disable(np);
+
+	np = of_find_compatible_node(root, NULL, "eeti,egalax_ts");
+	if (!np)
+		return -ENODEV;
+	of_device_enable(np);
+
+	return 0;
+}
 /*
  * This initcall needs to be executed before coredevices, so we have a chance
  * to fix up the internal DT with the correct display information.
@@ -507,6 +529,9 @@ static int rdu2_lcd_panel_init(void)
 
 	if (*lcd_type == 2)
 		of_register_fixup(rdu2_fixup_dsa, NULL);
+
+	if (*lcd_type == 7)
+		of_register_fixup(rdu2_fixup_egalax_ts, NULL);
 
 	if (!IS_ERR(lcd_type))
 		kfree(lcd_type);
