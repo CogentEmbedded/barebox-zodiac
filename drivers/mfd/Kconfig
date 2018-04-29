@@ -55,7 +55,7 @@ config MFD_TWL6030
 
 config RAVE_SP_CORE
 	tristate "RAVE SP MCU core driver"
-	# depends on SERIAL_DEV_BUS
+	select SERIAL_DEV_BUS
 	select CRC_CCITT
 	help
 	  Select this to get support for the Supervisory Processor
