@@ -1,0 +1,125 @@
+/*
+ * Copyright 2018 CogentEmbedded, Inc.
+ * Copyright 2011 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+#include <arm/imx51-zii-rdu1.dts>
+
+/ {
+	chosen {
+		stdout-path = &uart1;
+
+		environment-spi {
+			compatible = "barebox,environment";
+			device-path = &spinor, "partname:barebox-environment";
+		};
+	};
+
+	aliases {
+		main_eeprom = &main_eeprom;
+		dds_eeprom = &dds_eeprom;
+	};
+};
+
+&ecspi1 {
+	spinor: flash@1 {
+		partition@e0000 {
+			label = "barebox-environment";
+			reg = <0xe0000 0x20000>;
+		};
+	};
+};
+
+/* This is missing in upstream DTS now ... */
+&uart3 {
+	rave-sp {
+                #address-cells = <1>;
+                #size-cells = <1>;
+		
+		dds_eeprom: eeprom@a3 {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xa3 0x2000>;
+		};
+
+		main_eeprom: eeprom@a4 {
+			compatible = "zii,rave-sp-eeprom";
+			reg = <0xa4 0x4000>;
+		};
+
+		backlight {
+			compatible = "zii,rave-sp-backlight";
+			singlestep;
+		};
+	};
+};
+
+/* Timings for supported panel types */
+/ {
+	disp0 {
+		interface-pix-fmt = "rgb24";
+		display-timings {
+			toshiba89 {
+				clock-frequency = <80000000>;
+				hactive = <1280>;
+				vactive = <768>;
+				hback-porch = <192>;
+				hsync-len = <128>;
+				hfront-porch = <64>;
+				vback-porch = <20>;
+				vsync-len = <7>;
+				vfront-porch = <3>;
+				pixelclk-active = <0>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+			};
+
+			/* Timings per spec - do not work */
+			/*chimei15 {
+				clock-frequency = <71000000>;
+				hactive = <1280>;
+				vactive = <800>;
+				hback-porch = <80>;
+				hsync-len = <1>;
+				hfront-porch = <79>;
+				vback-porch = <11>;
+				vsync-len = <1>;
+				vfront-porch = <11>;
+				pixelclk-active = <0>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+			};*/
+
+			/* Working timings but panel is overclocked */
+			chimei15 {
+				clock-frequency = <82867200>;
+				hactive = <1280>;
+				vactive = <800>;
+				hback-porch = <192>;
+				hsync-len = <128>;
+				hfront-porch = <64>;
+				vback-porch = <20>;
+				vsync-len = <7>;
+				vfront-porch = <3>;
+				pixelclk-active = <0>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+			};
+		};
+	};
+};
+
+/* Force usbh1 to full-speed due to hardware cabling issues */
+&usbh1 {
+	maximum-speed = "full-speed";
+};
