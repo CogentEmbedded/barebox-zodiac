@@ -136,11 +136,12 @@ struct rave_sp_variant_cmds {
  *
  * @checksum:	Variant specific checksum implementation
  * @cmd:	Variant specific command pointer table
- *
+ * @add_params	Variant specific routine to add barebox device parameters
  */
 struct rave_sp_variant {
 	const struct rave_sp_checksum *checksum;
 	struct rave_sp_variant_cmds cmd;
+	int (*add_params)(struct rave_sp *);
 };
 
 /**
@@ -169,6 +170,10 @@ struct rave_sp {
 
 	const char *part_number_firmware;
 	const char *part_number_bootloader;
+
+	struct device_d dev;
+	uint32_t usb_power;
+	uint32_t lcd_power;
 };
 
 struct rave_sp_version {
@@ -557,7 +562,7 @@ reset_framer:
 static int rave_sp_rdu1_cmd_translate(enum rave_sp_command command)
 {
 	if (command >= RAVE_SP_CMD_STATUS &&
-	    command <= RAVE_SP_CMD_CONTROL_EVENTS)
+	    command <= RAVE_SP_CMD_LCD_BOOT_ENABLE)
 		return command;
 
 	return -EINVAL;
@@ -652,6 +657,55 @@ static int rave_sp_get_status(struct rave_sp *sp)
 	return 0;
 }
 
+static int rave_sp_usb_power_set(struct param_d *p, void *priv)
+{
+	struct rave_sp *sp = priv;
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_USB_BOOT_ENABLE,
+		[1] = 0
+	};
+
+	if (!sp->usb_power) {
+		dev_err(sp->serdev->dev, "disabling USB power is not supported\n");
+		return -EIO;
+	}
+
+	return rave_sp_exec(sp, cmd, sizeof(cmd), NULL, 0);
+}
+
+static int rave_sp_lcd_power_set(struct param_d *p, void *priv)
+{
+	struct rave_sp *sp = priv;
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_LCD_BOOT_ENABLE,
+		[1] = 0
+	};
+
+	if (!sp->lcd_power) {
+		dev_err(sp->serdev->dev, "disabling LCD power is not supported\n");
+		return -EIO;
+	}
+
+	return rave_sp_exec(sp, cmd, sizeof(cmd), NULL, 0);
+}
+
+static int rave_sp_rdu1_add_params(struct rave_sp *sp)
+{
+	struct param_d *p;
+
+	p = dev_add_param_bool(&sp->dev, "usb_power", rave_sp_usb_power_set, NULL,
+			&sp->usb_power, sp);
+	if (IS_ERR(p))
+		return PTR_ERR(p);
+
+	p = dev_add_param_bool(&sp->dev, "lcd_power", rave_sp_lcd_power_set, NULL,
+			&sp->lcd_power, sp);
+	if (IS_ERR(p))
+		return PTR_ERR(p);
+
+	return 0;
+}
+
 static const struct rave_sp_checksum rave_sp_checksum_8b2c = {
 	.length     = 1,
 	.subroutine = csum_8b2c,
@@ -674,6 +728,7 @@ static const struct rave_sp_variant rave_sp_rdu1 = {
 	.cmd = {
 		.translate = rave_sp_rdu1_cmd_translate,
 	},
+	.add_params = rave_sp_rdu1_add_params,
 };
 
 static const struct rave_sp_variant rave_sp_rdu2 = {
@@ -746,6 +801,23 @@ static int rave_sp_probe(struct device_d *dev)
 	 */
 	dev_info(dev, "Firmware version: %s",   sp->part_number_firmware);
 	dev_info(dev, "Bootloader version: %s", sp->part_number_bootloader);
+
+	if (sp->variant->add_params) {
+		sp->dev.parent = dev;
+		strcpy(sp->dev.name, "sp");
+		sp->dev.id = DEVICE_ID_SINGLE;
+		ret = register_device(&sp->dev);
+		if (ret) {
+			dev_err(dev, "Failed to register child device\n");
+			return ret;
+		}
+
+		ret = sp->variant->add_params(sp);
+		if (ret) {
+			unregister_device(&sp->dev);
+			return ret;
+		}
+	}
 
 	return of_platform_populate(dev->device_node, NULL, dev);
 }
