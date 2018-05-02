@@ -8,6 +8,7 @@ struct backlight_device {
 	int brightness_max;
 	int brightness_default;
 	int (*brightness_set)(struct backlight_device *, int brightness);
+	int singlestep;
 	struct list_head list;
 	struct device_d dev;
 	struct device_node *node;

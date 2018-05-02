@@ -15,6 +15,13 @@ int backlight_set_brightness(struct backlight_device *bl, int brightness)
 	if (brightness == bl->brightness_cur)
 		return 0;
 
+	if (bl->singlestep) {
+		ret = bl->brightness_set(bl, brightness);
+		if (ret)
+			return ret;
+		goto out;
+	}
+
 	if (brightness > bl->brightness_cur)
 		step = 1;
 	else
@@ -37,7 +44,7 @@ int backlight_set_brightness(struct backlight_device *bl, int brightness)
 		udelay(100000 / num_steps);
 	}
 
-
+out:
 	bl->brightness_cur = bl->brightness = brightness;
 
 	return ret;
