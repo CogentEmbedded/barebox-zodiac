@@ -41,6 +41,7 @@ static int rave_sp_backlight_set(struct backlight_device *bd, int brightness)
 
 static int rave_sp_backlight_probe(struct device_d *dev)
 {
+	struct device_node *node = dev->device_node;
 	struct backlight_device *bd;
 	int ret;
 
@@ -49,6 +50,9 @@ static int rave_sp_backlight_probe(struct device_d *dev)
 	bd->brightness_default = 50;
 	bd->brightness_max = 100;
 	bd->brightness_set = rave_sp_backlight_set;
+
+	if (of_property_read_bool(node, "singlestep"))
+		bd->singlestep = 1;
 
 	ret = backlight_register(bd);
 	if (ret) {
