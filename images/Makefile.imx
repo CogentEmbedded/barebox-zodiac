@@ -86,6 +86,16 @@ CFG_start_imx51_zii_rdu1_xload.pblx.imximg = $(board)/zii-imx51-rdu1/flash-heade
 FILE_barebox-zii-imx51-rdu1-xload.img = start_imx51_zii_rdu1_xload.pblx.imximg
 imx-xload-$(CONFIG_MACH_ZII_RDU1) += barebox-zii-imx51-rdu1-xload.img
 
+pblx-$(CONFIG_MACH_ZII_MEZZ) += start_imx51_zii_mezz
+CFG_start_imx51_zii_mezz.pblx.imximg = $(board)/zii-imx51-mezz/flash-header-imx51-zii-mezz.imxcfg
+FILE_barebox-zii-imx51-mezz.img = start_imx51_zii_mezz.pblx.imximg
+imx-barebox-$(CONFIG_MACH_ZII_MEZZ) += barebox-zii-imx51-mezz.img
+
+pblx-$(CONFIG_MACH_ZII_MEZZ) += start_imx51_zii_mezz_xload
+CFG_start_imx51_zii_mezz_xload.pblx.imximg = $(board)/zii-imx51-mezz/flash-header-imx51-zii-mezz-xload.imxcfg
+FILE_barebox-zii-imx51-mezz-xload.img = start_imx51_zii_mezz_xload.pblx.imximg
+imx-xload-$(CONFIG_MACH_ZII_MEZZ) += barebox-zii-imx51-mezz-xload.img
+
 ifdef CONFIG_ARCH_IMX_XLOAD
 image-y += $(imx-xload-y)
 else
