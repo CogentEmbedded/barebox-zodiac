@@ -41,6 +41,11 @@
 	};
 };
 
+/* No support for the needed DSA setup in Barebox right now */
+&fec {
+	status = "disabled";
+};
+
 &uart3 {
 	rave-sp {
 		compatible = "zii,rave-sp-rdu1";
