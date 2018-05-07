@@ -86,3 +86,8 @@
 		};
 	};
 };
+
+/* No support for the needed DSA setup in Barebox right now */
+&fec {
+	status = "disabled";
+};
