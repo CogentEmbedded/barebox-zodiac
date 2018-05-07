@@ -25,6 +25,7 @@ struct bbu_handler {
 	struct list_head list;
 #define BBU_HANDLER_FLAG_DEFAULT	(1 << 0)
 #define BBU_HANDLER_CAN_REFRESH		(1 << 1)
+#define BBU_HANDLER_SKIP_HEADER_OFFSET	(1 << 2)
 	unsigned long flags;
 
 	/* default device file, can be overwritten on the command line */

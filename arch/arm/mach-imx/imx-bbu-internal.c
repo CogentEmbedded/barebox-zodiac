@@ -160,15 +160,24 @@ static int imx_bbu_internal_v1_update(struct bbu_handler *handler, struct bbu_da
 {
 	struct imx_internal_bbu_handler *imx_handler =
 		container_of(handler, struct imx_internal_bbu_handler, handler);
+	const void *databuf = data->image;
+	int len = data->len;
 	int ret;
 
 	ret = imx_bbu_check_prereq(data->devicefile, data);
 	if (ret)
 		return ret;
 
+	if (handler->flags & BBU_HANDLER_SKIP_HEADER_OFFSET)
+	{
+		databuf += imx_handler->flash_header_offset;
+		len -= imx_handler->flash_header_offset;
+	}
+
 	printf("updating to %s\n", data->devicefile);
 
-	ret = imx_bbu_write_device(imx_handler, data->devicefile, data, data->image, data->len);
+	ret = imx_bbu_write_device(imx_handler, data->devicefile, data,
+				   databuf, len);
 
 	return ret;
 }
