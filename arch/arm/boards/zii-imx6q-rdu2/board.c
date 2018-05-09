@@ -15,6 +15,7 @@
 
 #include <common.h>
 #include <envfs.h>
+#include <fs.h>
 #include <gpio.h>
 #include <i2c/i2c.h>
 #include <init.h>
@@ -305,6 +306,34 @@ static int rdu2_ethernet1_init(void)
 	return rdu2_eth_register_ethaddr(np);
 }
 late_initcall(rdu2_ethernet1_init);
+
+static int rdu2_i210_invm(void)
+{
+	int fd;
+	u32 val;
+
+	if (!of_machine_is_compatible("zii,imx6q-zii-rdu2") &&
+	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
+		return 0;
+
+	fd = open("/dev/e1000-invm0", O_RDWR);
+	if (fd < 0) {
+		pr_err("could not open e1000 iNVM device!\n");
+		return fd;
+	}
+
+	pread(fd, &val, sizeof(val), 0);
+	if (val == 0x157b1a11) {
+		pr_debug("i210 already programmed correctly\n");
+		return 0;
+	}
+
+	val = 0x157b1a11;
+	pwrite(fd, &val, sizeof(val), 0);
+
+	return 0;
+}
+late_initcall(rdu2_i210_invm);
 
 enum rdu2_lcd_interface_type {
 	IT_SINGLE_LVDS,
