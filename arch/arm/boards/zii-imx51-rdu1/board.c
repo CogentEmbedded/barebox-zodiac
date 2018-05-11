@@ -264,6 +264,9 @@ static int zii_rdu1_late_init(void)
 {
 	int ret;
 
+	if (!of_machine_is_compatible("zii,imx51-rdu1"))
+		return 0;
+
 	strcpy(sndev.name, "spinor");
 	sndev.id = DEVICE_ID_SINGLE;
 

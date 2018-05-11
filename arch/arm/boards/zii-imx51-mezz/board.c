@@ -200,6 +200,9 @@ static int zii_mezz_late_init(void)
 {
 	int ret;
 
+	if (!of_machine_is_compatible("zii,imx51-mezz"))
+		return 0;
+
 	strcpy(sndev.name, "spinor");
 	sndev.id = DEVICE_ID_SINGLE;
 
