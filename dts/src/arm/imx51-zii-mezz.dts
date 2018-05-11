@@ -95,16 +95,19 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		dsa@0 {
+		switch@0 {
 			compatible = "marvell,mv88e6085";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
 			dsa,member = <0 0>;
-			//eeprom-length = <512>;
-			//reset-gpios = <&gpio4 26 GPIO_ACTIVE_LOW>;
+			eeprom-length = <512>;
+			interrupt-parent = <&gpio1>;
+			interrupts = <7 IRQ_TYPE_LEVEL_LOW>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 
-			ports@0 {
+			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
 
@@ -160,7 +163,7 @@
 		   <&gpio4 25 GPIO_ACTIVE_LOW>;
 	status = "okay";
 
-	pmic0 {
+	pmic@0 {
 		compatible = "fsl,mc13892";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_pmic>;
@@ -283,27 +286,6 @@
 		compatible = "atmel,at45db642d", "atmel,at45", "atmel,dataflash";
 		spi-max-frequency = <25000000>;
 		reg = <1>;
-
-		partition@0 {
-			label = "NOR-config";
-			reg = <0x0 0x00000400>;
-			read-only;
-		};
-
-		partition@400 {
-			label = "NOR-bootloader";
-			reg = <0x00000400 0x000FFC00>;
-		};
-
-		partition@100000 {
-			label = "NOR-kernel";
-			reg = <0x00100000 0x00300000>;
-		};
-
-		partition@400000 {
-			label = "NOR-rootfs";
-			reg = <0x00400000 0x00400000>;
-		};
 	};
 };
 
@@ -370,6 +352,15 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	status = "okay";
+
+	rave-sp {
+		compatible = "zii,rave-sp-mezz";
+		current-speed = <38400>;
+
+		watchdog {
+			compatible = "zii,rave-sp-watchdog";
+		};
+	};
 };
 
 &usbotg {
@@ -500,13 +491,6 @@
 			>;
 		};
 
-		/* done */
-		pinctrl_usbotgreg: usbotgreggrp {
-			fsl,pins = <
-				MX51_PAD_CSI1_D9__GPIO3_13		0x85
-			>;
-		};
-
 		/* ARINC1 */
 		pinctrl_arinc1: arinc1grp {
 			fsl,pins = <
@@ -601,6 +585,9 @@
 				/* Switch_Reset_Req - ?? */
 				MX51_PAD_CSPI1_RDY__GPIO4_26		0x5
 
+				/* MMC2_Reset */
+				MX51_PAD_CSI1_D9__GPIO3_13		0x85
+
 				/* DiscreteOUT 1..7 */
 				MX51_PAD_USBH1_DIR__GPIO1_26		0x5
 				MX51_PAD_USBH1_STP__GPIO1_27		0x5
@@ -649,24 +636,18 @@
 };
 
 &gpio1 {
-	gpio1_2 {
-		gpio-hog;
-		gpios = <2 GPIO_ACTIVE_HIGH>;
-		output-low;
-		line-name = "gpio1_2";
-	};
 	gpio1_3 {
 		gpio-hog;
 		gpios = <3 GPIO_ACTIVE_HIGH>;
 		input;
 		line-name = "gpio1_3";
 	};
-	gpio1_7 {
-		gpio-hog;
-		gpios = <7 GPIO_ACTIVE_HIGH>;
-		input;
-		line-name = "gpio1_7";
-	};
+//	gpio1_7 {
+//		gpio-hog;
+//		gpios = <7 GPIO_ACTIVE_HIGH>;
+//		input;
+//		line-name = "gpio1_7";
+//	};
 	gpio1_9 {
 		gpio-hog;
 		gpios = <9 GPIO_ACTIVE_HIGH>;
