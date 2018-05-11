@@ -153,6 +153,10 @@
 	};
 };
 
+&cpu {
+	cpu-supply = <&sw1_reg>;
+};
+
 &ecspi1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi1>;
