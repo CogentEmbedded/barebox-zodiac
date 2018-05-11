@@ -67,24 +67,6 @@
 		};
 	};
 
-	regulators {
-		compatible = "simple-bus";
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		reg_mmc_reader_reset: regulator@0 {
-			compatible = "regulator-fixed";
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_usbotgreg>;
-			reg = <0>;
-			regulator-name = "sd_reader_reset";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			gpio = <&gpio3 13 GPIO_ACTIVE_HIGH>;
-			enable-active-high;
-		};
-	};
-
 	mdio_gpio: mdio-gpio {
 		compatible = "virtual,mdio-gpio";
 		pinctrl-names = "default";
@@ -150,6 +132,14 @@
 				};
 			};
 		};
+	};
+
+	reg_5p0v_main: regulator-5p0v-main {
+		compatible = "regulator-fixed";
+		regulator-name = "5V_MAIN";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
 	};
 };
 
@@ -218,8 +208,9 @@
 			};
 
 			vsd_reg: vsd {
-				regulator-min-microvolt = <1800000>;
+				regulator-min-microvolt = <3000000>;
 				regulator-max-microvolt = <3150000>;
+				regulator-always-on;
 			};
 
 			vusb2_reg: vusb2 {
@@ -368,7 +359,7 @@
 	dr_mode = "host";
 	disable-over-current;
 	phy_type = "utmi_wide";
-	vbus-supply = <&reg_mmc_reader_reset>;
+	vbus-supply = <&reg_5p0v_main>;
 	status = "okay";
 };
 
@@ -748,6 +739,16 @@
 		gpios = <28 GPIO_ACTIVE_HIGH>;
 		output-low;
 		line-name = "discrete_out_z_3";
+	};
+};
+
+&gpio3 {
+	gpio3_13 {
+		gpio-hog;
+		export;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "MMC2_Reset";
 	};
 };
 
