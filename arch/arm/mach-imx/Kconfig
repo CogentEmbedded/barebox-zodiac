@@ -42,6 +42,7 @@ config ARCH_TEXT_BASE
 	default 0x9fc00000 if MACH_WARP7
 	default 0x97f00000 if MACH_ZII_RDU1
 	default 0x97f00000 if MACH_ZII_MEZZ
+	default 0x97f00000 if MACH_ZII_ESB
 
 config ARCH_IMX_IMXIMAGE
 	bool
@@ -402,6 +403,13 @@ config MACH_ZII_RDU1
 
 config MACH_ZII_MEZZ
 	bool "ZII i.MX51 Mezzanine"
+	select ARCH_IMX51
+	select SPI
+	select DRIVER_SPI_IMX
+	select MFD_MC13XXX
+
+config MACH_ZII_ESB
+	bool "ZII i.MX51 Ethernet Switch Board"
 	select ARCH_IMX51
 	select SPI
 	select DRIVER_SPI_IMX
