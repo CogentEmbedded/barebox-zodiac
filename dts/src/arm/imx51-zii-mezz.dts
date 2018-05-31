@@ -295,16 +295,17 @@
 	/* pinctrl_arinc2 */
 };
 
-/* eMMC */
 &esdhc1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_esdhc1>;
 	bus-width = <8>;
+	no-1-8-v;
 	non-removable;
+	no-sdio;
+	no-sd;
 	status = "okay";
 };
 
-/* u-SD */
 &esdhc4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_esdhc4>;
@@ -346,10 +347,6 @@
 	};
 };
 
-&ssi2 {
-	status = "okay";
-};
-
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1>;
@@ -377,10 +374,6 @@
 	phy_type = "utmi_wide";
 	vbus-supply = <&reg_5p0v_main>;
 	status = "okay";
-};
-
-&ipu {
-	status = "disabled";
 };
 
 &iomuxc {
