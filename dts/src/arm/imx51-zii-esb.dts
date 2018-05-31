@@ -74,7 +74,7 @@
 		i2c-gpio,delay-us = <2>;	/* ~100 kHz */
 		#address-cells = <1>;
 		#size-cells = <0>;
-		status = "enabled";
+		status = "okay";
 	};
 };
 
@@ -229,16 +229,17 @@
 	/* pinctrl_arinc2 */
 };
 
-/* eMMC */
 &esdhc1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_esdhc1>;
 	bus-width = <8>;
+	no-1-8-v;
 	non-removable;
+	no-sdio;
+	no-sd;
 	status = "okay";
 };
 
-/* u-SD */
 &esdhc4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_esdhc4>;
@@ -347,10 +348,6 @@
 		pagesize = <16>;
 		reg = <0x50>;
 	};
-};
-
-&ssi2 {
-	status = "okay";
 };
 
 &uart1 {
