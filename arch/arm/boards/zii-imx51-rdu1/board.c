@@ -33,6 +33,8 @@
 #include <mach/revision.h>
 #include <libfile.h>
 #include <param.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 static void rdu1_power_init(struct mc13xxx *mc13xxx)
 {
@@ -260,6 +262,70 @@ static int fixup_display(struct device_node *root, void *context)
 	return 0;
 }
 
+static char *part_number;
+
+static void fetch_part_number(void)
+{
+	int fd, ret;
+	uint8_t buf[0x21];
+
+	fd = open_and_lseek("/dev/main_eeprom", O_RDONLY, 0x20);
+	if (fd < 0)
+		return;
+
+	ret = read(fd, buf, 32);
+	if (ret < 32)
+		return;
+
+	if (buf[0] < 1 || buf[0] > 31)
+		return;
+
+	buf[buf[0]+1] = 0;
+	part_number = strdup(&buf[1]);
+	if (part_number)
+		printf("RDU1 part number: %s\n", part_number);
+}
+
+static int fixup_touchscreen(struct device_node *root, void *context)
+{
+	struct device_node *i2c2_node, *node;
+	int i;
+
+	static struct {
+		const char *part_number_prefix;
+		const char *node_name;
+	} table[] = {
+		{ "00-5103-30", "touchscreen@20" },
+		{ "00-5105-01", "touchscreen@4b" },
+		{ "00-5105-20", "touchscreen@4b" },
+		{ "00-5105-30", "touchscreen@20" },
+		{ "00-5118-30", "touchscreen@20" },
+	};
+
+	if (!part_number)
+		return 0;
+
+	for (i = 0; i < ARRAY_SIZE(table); i++) {
+		const char *prefix = table[i].part_number_prefix;
+		if (!strncmp(part_number, prefix, strlen(prefix)))
+			break;
+	}
+
+	if (i == ARRAY_SIZE(table))
+		return 0;
+
+	i2c2_node = of_find_node_by_alias(root, "i2c1");   /* i2c1 = &i2c2 */
+	if (!i2c2_node)
+		return 0;
+
+	node = of_find_node_by_name(i2c2_node, table[i].node_name);
+	if (!node)
+		return 0;
+
+	of_device_enable(node);
+	return 0;
+}
+
 static int rdu1_late_init(void)
 {
 	int ret;
@@ -279,7 +345,12 @@ static int rdu1_late_init(void)
 	if (ret)
 		return ret;
 
-	return of_register_fixup(fixup_display, NULL);
+	ret = of_register_fixup(fixup_display, NULL);
+	if (ret)
+		return ret;
+
+	fetch_part_number();
+	return of_register_fixup(fixup_touchscreen, NULL);
 }
 late_initcall(rdu1_late_init);
 
