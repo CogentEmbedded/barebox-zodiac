@@ -16,9 +16,11 @@
  */
 
 #include <common.h>
+#include <fcntl.h>
+#include <fs.h>
 #include <init.h>
-#include <mach/bbu.h>
 #include <libfile.h>
+#include <mach/bbu.h>
 #include <mach/imx5.h>
 
 static int zii_rdu1_init(void)
@@ -126,12 +128,85 @@ static void rdu1_display_setup(void)
 	of_register_fixup(rdu1_fixup_display, NULL);
 }
 
+static char *part_number;
+
+static void fetch_part_number(void)
+{
+	int fd, ret;
+	uint8_t buf[0x21];
+
+	fd = open_and_lseek("/dev/main-eeprom", O_RDONLY, 0x20);
+	if (fd < 0)
+		return;
+
+	ret = read(fd, buf, 32);
+	if (ret < 32)
+		return;
+
+	if (buf[0] < 1 || buf[0] > 31)
+		return;
+
+	buf[buf[0]+1] = 0;
+	part_number = strdup(&buf[1]);
+	if (part_number)
+		pr_info("RDU1 part number: %s\n", part_number);
+}
+
+static int rdu1_fixup_touchscreen(struct device_node *root, void *context)
+{
+	struct device_node *i2c2_node, *node;
+	int i;
+
+	static struct {
+		const char *part_number_prefix;
+		const char *node_name;
+	} table[] = {
+		{ "00-5103-01", "touchscreen@4c" },
+		{ "00-5103-30", "touchscreen@20" },
+		{ "00-5103-31", "touchscreen@20" },
+		{ "00-5105-01", "touchscreen@4b" },
+		{ "00-5105-20", "touchscreen@4b" },
+		{ "00-5105-30", "touchscreen@20" },
+		{ "00-5107-01", "touchscreen@4b" },
+		{ "00-5108-01", "touchscreen@4c" },
+		{ "00-5118-30", "touchscreen@20" },
+	};
+
+	if (!part_number)
+		return 0;
+
+	for (i = 0; i < ARRAY_SIZE(table); i++) {
+		const char *prefix = table[i].part_number_prefix;
+		if (!strncmp(part_number, prefix, strlen(prefix)))
+			break;
+	}
+
+	if (i == ARRAY_SIZE(table))
+		return 0;
+
+	pr_info("Enabling \"%s\".\n", table[i].node_name);
+
+	i2c2_node = of_find_node_by_alias(root, "i2c1");   /* i2c1 = &i2c2 */
+	if (!i2c2_node)
+		return 0;
+
+	node = of_find_node_by_name(i2c2_node, table[i].node_name);
+	if (!node)
+		return 0;
+
+	of_device_enable(node);
+	return 0;
+}
+
 static int rdu1_late_init(void)
 {
 	if (!of_machine_is_compatible("zii,imx51-rdu1"))
 		return 0;
 
 	rdu1_display_setup();
+
+	fetch_part_number();
+	of_register_fixup(rdu1_fixup_touchscreen, NULL);
 
 	return 0;
 }
