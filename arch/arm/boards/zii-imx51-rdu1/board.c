@@ -295,10 +295,14 @@ static int fixup_touchscreen(struct device_node *root, void *context)
 		const char *part_number_prefix;
 		const char *node_name;
 	} table[] = {
+		{ "00-5103-01", "touchscreen@4c" },
 		{ "00-5103-30", "touchscreen@20" },
+		{ "00-5103-31", "touchscreen@20" },
 		{ "00-5105-01", "touchscreen@4b" },
 		{ "00-5105-20", "touchscreen@4b" },
 		{ "00-5105-30", "touchscreen@20" },
+		{ "00-5107-01", "touchscreen@4b" },
+		{ "00-5108-01", "touchscreen@4c" },
 		{ "00-5118-30", "touchscreen@20" },
 	};
 
