@@ -67,6 +67,8 @@
 #define RAVE_SP_BOOT_SOURCE_EMMC	1
 #define RAVE_SP_BOOT_SOURCE_NOR		2
 
+#define RAVE_SP_IPADDR_INVALID		U32_MAX
+
 /**
  * enum rave_sp_deframer_state - Possible state for de-framer
  *
@@ -174,6 +176,9 @@ struct rave_sp {
 	struct device_d dev;
 	uint32_t usb_power;
 	uint32_t lcd_power;
+
+	IPaddr_t ipaddr;
+	IPaddr_t netmask;
 };
 
 struct rave_sp_version {
@@ -747,6 +752,73 @@ static const struct of_device_id __maybe_unused rave_sp_dt_ids[] = {
 	{ /* sentinel */ }
 };
 
+static int rave_sp_req_ip_addr(struct param_d *p, void *context)
+{
+	struct rave_sp *sp = context;
+	u8 cmd[] = {
+		[0] = RAVE_SP_CMD_REQ_IP_ADDR,
+		[1] = 0,
+		[2] = 0, 	/* FIXME: Support for RJU? */
+		[3] = 0,	/* Add support for IPs other than "self" */
+	};
+	struct {
+		__le32 ipaddr;
+		__le32 netmask;
+	} __packed rsp;
+	int ret;
+
+	/*
+	 * We only query RAVE SP device for IP/Netmask once, after
+	 * that we just "serve" cached data.
+	 */
+	if (sp->ipaddr != RAVE_SP_IPADDR_INVALID)
+		return 0;
+
+	ret = rave_sp_exec(sp, &cmd, sizeof(cmd), &rsp, sizeof(rsp));
+	if (ret < 0)
+		return ret;
+
+	sp->ipaddr  = le32_to_cpu(rsp.ipaddr);
+	sp->netmask = le32_to_cpu(rsp.netmask);
+
+	return 0;
+}
+
+static int rave_sp_add_params(struct rave_sp *sp)
+{
+	struct device_d *dev = &sp->dev;
+	struct param_d *p;
+	int ret;
+
+	dev->parent = sp->serdev->dev;
+	strcpy(dev->name, "sp");
+	dev->id = DEVICE_ID_SINGLE;
+
+	ret = register_device(dev);
+	if (ret)
+		return ret;
+
+	p = dev_add_param_ip(dev, "ipaddr", NULL, rave_sp_req_ip_addr,
+			     &sp->ipaddr, sp);
+	if (IS_ERR(p))
+		return PTR_ERR(p);
+
+	p = dev_add_param_ip(dev, "netmask", NULL, rave_sp_req_ip_addr,
+			     &sp->netmask, sp);
+	if (IS_ERR(p))
+		return PTR_ERR(p);
+
+	if (sp->variant->add_params) {
+	ret = sp->variant->add_params(sp);
+		if (ret) {
+			dev_err(dev, "Failed to add variant specific parameters\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int rave_sp_probe(struct device_d *dev)
 {
 	struct serdev_device *serdev = to_serdev_device(dev->parent);
@@ -762,6 +834,7 @@ static int rave_sp_probe(struct device_d *dev)
 
 	sp = xzalloc(sizeof(*sp));
 	sp->serdev = serdev;
+	sp->ipaddr = RAVE_SP_IPADDR_INVALID;
 	dev->priv = sp;
 	serdev->dev = dev;
 	serdev->receive_buf = rave_sp_receive_buf;
@@ -802,21 +875,10 @@ static int rave_sp_probe(struct device_d *dev)
 	dev_info(dev, "Firmware version: %s",   sp->part_number_firmware);
 	dev_info(dev, "Bootloader version: %s", sp->part_number_bootloader);
 
-	if (sp->variant->add_params) {
-		sp->dev.parent = dev;
-		strcpy(sp->dev.name, "sp");
-		sp->dev.id = DEVICE_ID_SINGLE;
-		ret = register_device(&sp->dev);
-		if (ret) {
-			dev_err(dev, "Failed to register child device\n");
-			return ret;
-		}
-
-		ret = sp->variant->add_params(sp);
-		if (ret) {
-			unregister_device(&sp->dev);
-			return ret;
-		}
+	ret = rave_sp_add_params(sp);
+	if (ret) {
+		dev_err(dev, "Failed to add parameters to RAVE SP\n");
+		return ret;
 	}
 
 	return of_platform_populate(dev->device_node, NULL, dev);
