@@ -253,6 +253,9 @@ static int fixup_display(struct device_node *root, void *context)
 {
 	struct device_node *node;
 
+	pr_info("Enabling panel with compatible \"%s\".\n",
+		current_dt->compatible);
+
 	node = of_find_node_by_name(root, "panel");
 	if (!node)
 		return -ENODEV;
@@ -260,6 +263,7 @@ static int fixup_display(struct device_node *root, void *context)
 	of_device_enable(node);
 	of_set_property(node, "compatible", current_dt->compatible,
 			strlen(current_dt->compatible) + 1, 1);
+
 	return 0;
 }
 
@@ -318,6 +322,8 @@ static int fixup_touchscreen(struct device_node *root, void *context)
 
 	if (i == ARRAY_SIZE(table))
 		return 0;
+
+	pr_info("Enabling \"%s\".\n", table[i].node_name);
 
 	i2c2_node = of_find_node_by_alias(root, "i2c1");   /* i2c1 = &i2c2 */
 	if (!i2c2_node)
