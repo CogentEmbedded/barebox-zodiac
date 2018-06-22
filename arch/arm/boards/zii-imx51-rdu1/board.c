@@ -273,7 +273,7 @@ static void fetch_part_number(void)
 	int fd, ret;
 	uint8_t buf[0x21];
 
-	fd = open_and_lseek("/dev/nvmem1", O_RDONLY, 0x20);
+	fd = open_and_lseek("/dev/main_eeprom", O_RDONLY, 0x20);
 	if (fd < 0)
 		return;
 

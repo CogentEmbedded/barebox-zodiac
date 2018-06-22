@@ -22,6 +22,11 @@
 			device-path = &spinor, "partname:barebox-environment";
 		};
 	};
+
+	aliases {
+		main_eeprom = &main_eeprom;
+		dds_eeprom = &dds_eeprom;
+	};
 };
 
 &ecspi1 {
