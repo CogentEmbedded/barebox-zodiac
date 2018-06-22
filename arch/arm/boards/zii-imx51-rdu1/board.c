@@ -161,22 +161,23 @@ static int zii_rdu1_init(void)
 }
 coredevice_initcall(zii_rdu1_init);
 
-static struct device_d sndev;
+static struct device_d sndev = {
+	.name = "spinor",
+	.id = DEVICE_ID_SINGLE,
+};
 
-static struct rdu1_display_type {
-	const char *substr;	/* how it is described in spinor */
-	const char *mode_name;	/* mode_name for barebox DT */
-	const char *compatible;	/* compatible for kernel DT */
-} display_types[] = {
-	{ "Toshiba89", "toshiba89", "toshiba,lt089ac29000" },
-	{ "CHIMEI15", "chimei15", "innolux,g154i1-le1" }
-}, *current_dt; 
-
-static int add_sndev_params(void)
+static int import_spinor_config(void)
 {
+	int ret;
 	void *buf;
 	size_t size;
 	char *p, *v, *n, *e;
+
+	ret = register_device(&sndev);
+	if (ret < 0) {
+		printf("Failed to register device for spinor config\n");
+		return ret;
+	}
 
 	buf = read_file("/dev/dataflash0.config", &size);
 	if (!buf) {
@@ -206,6 +207,15 @@ static int add_sndev_params(void)
 
 	return 0;
 }
+
+static struct rdu1_display_type {
+	const char *substr;	/* how it is described in spinor */
+	const char *mode_name;	/* mode_name for barebox DT */
+	const char *compatible;	/* compatible for kernel DT */
+} display_types[] = {
+	{ "Toshiba89", "toshiba89", "toshiba,lt089ac29000" },
+	{ "CHIMEI15", "chimei15", "innolux,g154i1-le1" }
+}, *current_dt; 
 
 static int set_fb0_mode(void)
 {
@@ -268,26 +278,29 @@ static int fixup_display(struct device_node *root, void *context)
 
 static char *part_number;
 
-static void fetch_part_number(void)
+static int fetch_part_number(void)
 {
 	int fd, ret;
 	uint8_t buf[0x21];
 
 	fd = open_and_lseek("/dev/main_eeprom", O_RDONLY, 0x20);
 	if (fd < 0)
-		return;
+		return fd;
 
 	ret = read(fd, buf, 32);
 	if (ret < 32)
-		return;
+		return ret < 0 ? ret : -EINVAL;
 
 	if (buf[0] < 1 || buf[0] > 31)
-		return;
+		return -EINVAL;
 
 	buf[buf[0]+1] = 0;
 	part_number = strdup(&buf[1]);
-	if (part_number)
-		printf("RDU1 part number: %s\n", part_number);
+	if (!part_number)
+		return -ENOMEM;
+
+	printf("RDU1 part number: %s\n", part_number);
+	return 0;
 }
 
 static int fixup_touchscreen(struct device_node *root, void *context)
@@ -338,32 +351,18 @@ static int fixup_touchscreen(struct device_node *root, void *context)
 
 static int rdu1_late_init(void)
 {
-	int ret;
-
 	if (!of_machine_is_compatible("zii,imx51-rdu1"))
 		return 0;
 
-	strcpy(sndev.name, "spinor");
-	sndev.id = DEVICE_ID_SINGLE;
+	if (import_spinor_config() == 0) {
+		if (set_fb0_mode() == 0)
+			of_register_fixup(fixup_display, NULL);
+	}
 
-	ret = register_device(&sndev);
-	if (ret < 0)
-		return ret;
+	if (fetch_part_number() == 0)
+		of_register_fixup(fixup_touchscreen, NULL);
 
-	ret = add_sndev_params();
-	if (ret)
-		return ret;
-
-	ret = set_fb0_mode();
-	if (ret)
-		return ret;
-
-	ret = of_register_fixup(fixup_display, NULL);
-	if (ret)
-		return ret;
-
-	fetch_part_number();
-	return of_register_fixup(fixup_touchscreen, NULL);
+	return 0;
 }
 late_initcall(rdu1_late_init);
 
