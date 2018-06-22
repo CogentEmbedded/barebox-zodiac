@@ -35,6 +35,7 @@
 #include <param.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <net.h>
 
 static void zii_rdu1_power_init(struct mc13xxx *mc13xxx)
 {
@@ -258,6 +259,35 @@ static int set_fb0_mode(void)
 	return 0;
 }
 
+static int set_ethaddr(void)
+{
+	const char *ethaddrstr;
+	unsigned char ethaddr[6];
+	int ret;
+	struct device_node *node;
+
+	ethaddrstr = dev_get_param(&sndev, "mac");
+	if (!ethaddrstr) {
+		dev_warn(&sndev, "spinor.mac is not defined\n");
+		return -EINVAL;
+	}
+
+	ret = string_to_ethaddr(ethaddrstr, ethaddr);
+	if (ret) {
+		dev_warn(&sndev, "spinor.mac is mailformed\n");
+		return -EINVAL;
+	}
+
+	node = of_find_node_by_alias(of_get_root_node(), "ethernet0");
+	if (!node) {
+		printf("FEC node not found\n");
+		return -EINVAL;
+	}
+
+	of_eth_register_ethaddr(node, ethaddr);
+	return 0;
+}
+
 static int fixup_display(struct device_node *root, void *context)
 {
 	struct device_node *node;
@@ -357,6 +387,7 @@ static int rdu1_late_init(void)
 	if (import_spinor_config() == 0) {
 		if (set_fb0_mode() == 0)
 			of_register_fixup(fixup_display, NULL);
+		set_ethaddr();
 	}
 
 	if (fetch_part_number() == 0)
