@@ -176,13 +176,12 @@ static int add_sndev_params(void)
 {
 	void *buf;
 	size_t size;
-	int ret;
 	char *p, *v, *n, *e;
 
-	ret = read_file_2("/dev/dataflash0", &size, &buf, 1024);
-	if (ret && ret != -EFBIG) {
+	buf = read_file("/dev/dataflash0.config", &size);
+	if (!buf) {
 		printf("Failed to read settings from spi flash\n");
-		return ret;
+		return -EIO;
 	}
 
 	p = buf;
