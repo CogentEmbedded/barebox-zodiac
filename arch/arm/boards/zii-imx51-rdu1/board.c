@@ -39,3 +39,100 @@ static int zii_rdu1_init(void)
 	return 0;
 }
 coredevice_initcall(zii_rdu1_init);
+
+static struct rdu1_display_type {
+	const char *substr;	/* how it is described in spinor */
+	const char *mode_name;	/* mode_name for barebox DT */
+	const char *compatible;	/* compatible for kernel DT */
+} display_types[] = {
+	{ "Toshiba89", "toshiba89", "toshiba,lt089ac29000" },
+	{ "CHIMEI15", "chimei15", "innolux,g154i1-le1" }
+}, *current_dt;
+
+static int rdu1_fixup_display(struct device_node *root, void *context)
+{
+	struct device_node *node;
+
+	pr_info("Enabling panel with compatible \"%s\".\n",
+		current_dt->compatible);
+
+	node = of_find_node_by_name(root, "panel");
+	if (!node)
+		return -ENODEV;
+
+	of_device_enable(node);
+	of_set_property(node, "compatible", current_dt->compatible,
+			strlen(current_dt->compatible) + 1, 1);
+
+	return 0;
+}
+
+static void rdu1_display_setup(void)
+{
+	struct device_d *fb0;
+	size_t size;
+	void *buf;
+	int ret, i, pos = 0;
+
+	ret = read_file_2("/dev/dataflash0.config", &size, &buf, 512);
+	if (ret && ret != -EFBIG) {
+		pr_err("Failed to read settings from SPI flash!\n");
+		return;
+	}
+
+	while (pos < size) {
+		char *cur = buf + pos;
+
+		pos += strlen(cur) + 1;
+
+		if (strstr(cur, "video"))
+			break;
+	}
+
+	/* Sanity check before we try any further detection */
+	if (pos >= size) {
+		pr_err("Config flash doesn't contain video setting!\n");
+		free(buf);
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(display_types); i++) {
+		if (strstr(buf + pos, display_types[i].substr)) {
+			current_dt = &display_types[i];
+			break;
+		}
+	}
+
+	free(buf);
+
+	if (!current_dt) {
+		pr_warn("No known display configuration found!\n");
+		return;
+	}
+
+	fb0 = get_device_by_name("fb0");
+	if (!fb0) {
+		pr_warn("fb0 device not found!\n");
+		return;
+	}
+
+	ret = dev_set_param(fb0, "mode_name", current_dt->mode_name);
+	if (ret) {
+		pr_warn("failed to set fb0.mode_name to \'%s\'\n",
+			current_dt->mode_name);
+		return;
+	}
+
+	of_register_fixup(rdu1_fixup_display, NULL);
+}
+
+static int rdu1_late_init(void)
+{
+	if (!of_machine_is_compatible("zii,imx51-rdu1"))
+		return 0;
+
+	rdu1_display_setup();
+
+	return 0;
+}
+late_initcall(rdu1_late_init);
