@@ -16,13 +16,14 @@
 #include <common.h>
 #include <envfs.h>
 #include <fs.h>
+#include <globalvar.h>
 #include <gpio.h>
 #include <i2c/i2c.h>
 #include <init.h>
+#include <linux/nvmem-consumer.h>
 #include <mach/bbu.h>
 #include <mach/imx6.h>
 #include <net.h>
-#include <linux/nvmem-consumer.h>
 
 #define RDU2_DAC1_RESET	IMX_GPIO_NR(1, 0)
 #define RDU2_DAC2_RESET	IMX_GPIO_NR(1, 2)
@@ -255,6 +256,32 @@ static int rdu2_i210_invm(void)
 	return 0;
 }
 late_initcall(rdu2_i210_invm);
+
+static int rdu2_networkconfig(void)
+{
+	static char *rdu2_netconfig;
+	struct device_d *sp_dev;
+
+	if (!of_machine_is_compatible("zii,imx6q-zii-rdu2") &&
+	    !of_machine_is_compatible("zii,imx6qp-zii-rdu2"))
+		return 0;
+
+	sp_dev = get_device_by_name("sp");
+	if (!sp_dev) {
+		pr_warn("no sp device found, network config not available!\n");
+		return -ENODEV;
+	}
+
+	rdu2_netconfig = basprintf("ip=%s:::%s::eth0:",
+				   dev_get_param(sp_dev, "ipaddr"),
+				   dev_get_param(sp_dev, "netmask"));
+
+	globalvar_add_simple_string("linux.bootargs.rdu_network",
+				    &rdu2_netconfig);
+
+	return 0;
+}
+late_initcall(rdu2_networkconfig);
 
 enum rdu2_lcd_interface_type {
 	IT_SINGLE_LVDS,
