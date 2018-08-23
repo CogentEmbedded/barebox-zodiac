@@ -123,3 +123,9 @@ obj-$(CONFIG_CMD_MMC_EXTCSD)	+= mmc_extcsd.o
 obj-$(CONFIG_CMD_NAND_BITFLIP)	+= nand-bitflip.o
 obj-$(CONFIG_CMD_SEED)		+= seed.o
 obj-$(CONFIG_CMD_IP_ROUTE_GET)  += ip-route-get.o
+obj-$(CONFIG_CMD_RAVE_EEPROM)   += \
+	rave-eeprom/rave-eeprom-dump.o \
+	rave-eeprom/rave-eeprom-update.o \
+	rave-eeprom/rave-eeprom-dds.o \
+	rave-eeprom/rave-eeprom-main.o \
+	rave-eeprom.o
