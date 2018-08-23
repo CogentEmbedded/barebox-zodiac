@@ -2145,6 +2145,27 @@ config CMD_SEED
 	help
 	  Seed the pseudo random number generator (PRNG)
 
+config CMD_RAVE_EEPROM
+	tristate
+	select RAVE_EEPROM
+	prompt "rave-eeprom"
+	help
+	  Access RAVE EEPROM contents in human-readable format.
+
+	  Usage: rave_eeprom [-dICsctplru]
+
+	  Options:
+	          -d                      dump contents in human readable format
+	          -I                      ignore CRC errors when dumping contents
+	          -C                      check PIC EEPROM page CRCs (doesn't fix errors)
+	          -s EEPROM               select specific PIC EEPROM (dds or main) when dumping contents or checking CRCs
+	          -c SEAT-CLASS           set seat class (unset, economy, economy-premiere, business, ...)
+	          -t DISPLAY-TYPE         set display type (unset, seat, crew-panel, broadcast, hot-spare)
+	          -p LOCATION-TYPE        set location type (unset, standard-seat, crew-rest, ...)
+	          -l SEAT-LOCATION        set seat location (e.g. 1A)
+	          -r POWER                set RJU USB power state (off or on)
+	          -u POWER                set User USB power state (off or on)
+
 # end Miscellaneous commands
 endmenu
 
