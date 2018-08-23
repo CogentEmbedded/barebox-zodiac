@@ -2152,11 +2152,13 @@ config CMD_RAVE_EEPROM
 	help
 	  Access RAVE EEPROM contents in human-readable format.
 
-	  Usage: rave_eeprom [-dsctplru]
+	  Usage: rave_eeprom [-dICsctplru]
 
 	  Options:
 	          -d                      dump contents in human readable format
-	          -s EEPROM               select specific EEPROM (dds or main) when dumping contents
+	          -I                      ignore CRC errors when dumping contents
+	          -C                      check PIC EEPROM page CRCs (doesn't fix errors)
+	          -s EEPROM               select specific PIC EEPROM (dds or main) when dumping contents or checking CRCs
 	          -c SEAT-CLASS           set seat class (unset, economy, economy-premiere, business, ...)
 	          -t DISPLAY-TYPE         set display type (unset, seat, crew-panel, broadcast, hot-spare)
 	          -p LOCATION-TYPE        set location type (unset, standard-seat, crew-rest, ...)
