@@ -1,0 +1,9 @@
+#!/bin/sh
+
+splash /env/logo/rave.png
+version -d /dev/fb0 -p lower-left
+fb0.enable=1
+
+sp.lcd_power=1
+sleep 1
+backlight0.brightness=60
