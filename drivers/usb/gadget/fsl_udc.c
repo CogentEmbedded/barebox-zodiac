@@ -2295,8 +2295,10 @@ err_out:
 
 void ci_udc_unregister(void)
 {
-	if (udc_controller)
+	if (udc_controller) {
 		usb_del_gadget_udc(&udc_controller->gadget);
+		udc_controller = NULL;
+	}
 
 }
 
