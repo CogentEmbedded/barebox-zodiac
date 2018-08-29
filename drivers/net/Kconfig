@@ -211,6 +211,13 @@ config DRIVER_NET_TSE
 	help
 	  This option enables support for the Altera TSE MAC.
 
+config DRIVER_NET_MV88E6XXXX
+	bool "Marvell MV88E6xxx switches driver"
+	select PHYLIB
+	help
+	  This option enables support for accessing Marvell
+	  switches EEPROM and internal MDIO bus.
+
 config TSE_USE_DEDICATED_DESC_MEM
 	depends on DRIVER_NET_TSE
 	bool "Altera TSE uses dedicated descriptor memory"
