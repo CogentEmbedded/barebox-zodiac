@@ -23,14 +23,14 @@
 
 
 /* common */
-static int mv88e6xxx_read_reg(struct mv88e6xxx_priv *priv, int chip, int reg)
+static int mv88e6xxx_read_reg(struct mv88e6xxx_priv *priv, int addr, int regnum)
 {
-	return mdiobus_read(priv->parent_miibus, chip, reg);
+	return mdiobus_read(priv->parent_miibus, addr, regnum);
 }
 
-static int mv88e6xxx_write_reg(struct mv88e6xxx_priv *priv, int chip, int reg, u16 value)
+static int mv88e6xxx_write_reg(struct mv88e6xxx_priv *priv, int addr, int regnum, u16 value)
 {
-	return mdiobus_write(priv->parent_miibus, chip, reg, value);
+	return mdiobus_write(priv->parent_miibus, addr, regnum, value);
 }
 
 /* internal MDIO bus stuff */
@@ -103,14 +103,6 @@ static int mv88e6xxx_miibus_write(struct mii_bus *bus, int phy_id,
 		return -ETIMEDOUT;
 
 	return status;
-}
-
-static int mv88e6xxx_mdiibus_reset(struct mii_bus *bus)
-{
-	struct mv88e6xxx_priv *priv = bus->priv;
-
-	/* TODO */
-	return 0;
 }
 
 /* EEPROM stuff */
@@ -283,38 +275,22 @@ static int mv88e6xxx_probe(struct device_d *dev)
 {
 	int err;
 	u32 eeprom_size;
-	struct mii_bus *mii;
 	struct mv88e6xxx_priv *priv;
-	struct mii_bus *miibus;
-
-/*
-	if (!dev->platform_data) {
-		dev_err(dev, "no platform data\n");
-		return -ENODEV;
-	}
-
-	pdata = dev->platform_data;
-*/
 
 	priv = xzalloc(sizeof(struct mv88e6xxx_priv));
-	miibus = &priv->miibus;
 
-	for_each_mii_bus(mii)
-		if (&mii->dev == dev->parent)
-			priv->parent_miibus = mii;
-
-	if (!priv->parent_miibus) {
-		dev_err(dev, "Cannot find parent MDIO bus\n");
-		return -ENODEV;
-	}
+	priv->parent_miibus = of_mdio_find_bus(dev->device_node->parent);
+	if (!priv->parent_miibus)
+		return -EPROBE_DEFER;
 
 	priv->miibus.read = mv88e6xxx_miibus_read;
 	priv->miibus.write = mv88e6xxx_miibus_write;
-	priv->miibus.reset = mv88e6xxx_mdiibus_reset;
+	/* only first 5 are phys */
+	//priv->miibus.phy_mask = 0xffffffe0;
 	priv->miibus.priv = priv;
 	priv->miibus.parent = dev;
 
-	mdiobus_register(miibus);
+	mdiobus_register(&priv->miibus);
 
 	/* EEPROM */
 	if (dev->device_node &&
@@ -342,22 +318,7 @@ static int mv88e6xxx_probe(struct device_d *dev)
 		priv->fops.lseek = dev_lseek_default;
 		priv->fops.read	= mv88e6xxx_eeprom_cdev_read;
 		priv->fops.write = mv88e6xxx_eeprom_cdev_write;
-		//priv->fops.protect = mv88e6xxx_eeprom_cdev_protect;
 
-#if 0
-		if (!of_get_property(dev->device_node, "read-only", NULL)) {
-			unsigned write_max = chip.page_size;
-
-			priv->fops.write = at24_cdev_write;
-
-			if (write_max > io_limit)
-				write_max = io_limit;
-			priv->write_max = write_max;
-
-			/* buffer (data + address at the beginning) */
-			priv->writebuf = xmalloc(write_max + 2);
-		}
-#endif
 		err = devfs_create(&priv->cdev);
 		if (err)
 			goto err_unreg_mii;
@@ -366,7 +327,7 @@ static int mv88e6xxx_probe(struct device_d *dev)
 	return 0;
 
 err_unreg_mii:
-	mdiobus_unregister(miibus);
+	mdiobus_unregister(&priv->miibus);
 
 	return err;
 }
