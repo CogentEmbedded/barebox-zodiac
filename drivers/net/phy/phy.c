@@ -279,7 +279,9 @@ int phy_register_device(struct phy_device *phydev)
 	if (phydev->dev.driver)
 		return 0;
 
-	phydev->dev.driver = &genphy_driver.drv;
+	if (!phydev->dev.driver)
+		phydev->dev.driver = &genphy_driver.drv;
+
 	ret = device_probe(&phydev->dev);
 	if (ret) {
 		unregister_device(&phydev->dev);
