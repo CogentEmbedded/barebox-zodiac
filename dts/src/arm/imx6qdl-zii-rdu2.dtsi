@@ -61,9 +61,53 @@
 		         &gpio6 4 GPIO_ACTIVE_HIGH>;
 
 		eth_switch: mv88e6xxx {
-			compatible = "marvell,mv88e6xxx";
+			compatible = "marvell,mv88e6085";
 
 			eeprom-size = <1024>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					label = "cpu";
+				};
+
+				port@1 {
+					reg = <1>;
+					label = "wan";
+					phy-handle = <&switch0phy0>;
+				};
+
+				port@2 {
+					reg = <2>;
+					label = "lan0";
+					phy-handle = <&switch0phy1>;
+				};
+
+				port@3 {
+					reg = <3>;
+					label = "lan1";
+					phy-handle = <&switch0phy2>;
+				};
+
+			};
+
+			mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				switch0phy0: switch0phy0@11 {
+					reg = <0x11>;
+				};
+				switch0phy1: switch0phy1@12 {
+					reg = <0x12>;
+				};
+				switch0phy2: switch0phy2@13 {
+					reg = <0x13>;
+				};
+			};
 		};
 	};
 
