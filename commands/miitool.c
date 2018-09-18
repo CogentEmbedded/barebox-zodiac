@@ -116,7 +116,7 @@ static int show_basic_mii(struct mii_bus *mii, struct phy_device *phydev,
 		mii_val[i] = mii->read(mii, phydev->addr, i);
 
 	printf((mii->parent->id) < 0 ? "%s: %s:" : "%s: %s%d: ",
-	       phydev->cdev.name, mii->parent->name, mii->parent->id);
+	       phydev->dev.name, mii->parent->name, mii->parent->id);
 
 
 	if (mii_val[MII_BMCR] == 0xffff || mii_val[MII_BMSR] == 0x0000) {
