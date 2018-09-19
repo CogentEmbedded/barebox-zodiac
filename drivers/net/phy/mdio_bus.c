@@ -39,6 +39,9 @@ int mdiobus_detect(struct device_d *dev)
 	for (i = 0; i < PHY_MAX_ADDR; i++) {
 		struct phy_device *phydev;
 
+		/* skip masked out PHY addresses */
+		if (mii->phy_mask & (1 << i))
+			continue;
 		phydev = mdiobus_scan(mii, i);
 		if (IS_ERR(phydev))
 			continue;
