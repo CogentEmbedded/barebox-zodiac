@@ -244,7 +244,7 @@ static void mdiobus_show(struct device_d *dev, const char *phydevname,
 		 * the next iteration
 		 */
 		if (phydevname &&
-		    strcmp(phydev->cdev.name, phydevname))
+		    strcmp(phydev->dev.name, phydevname))
 			continue;
 
 		show_basic_mii(mii, phydev, verbose);
